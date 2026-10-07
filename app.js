@@ -1,5 +1,5 @@
 /*
- * ons roos: the lock, then the garden.
+ * ons tuin: the lock, then the garden.
  *
  *   garden.js  the rose bush (grows with the date)
  *   roots.js   the roots and the memories at their tips
@@ -102,7 +102,7 @@ async function tryPassword(event) {
       return;
     }
     msg.textContent = '';
-    if ($('#remember').checked) await rememberKey(key);
+    await rememberKey(key); // every device remembers; "sluit die tuin" in the ⓘ panel forgets
     input.blur();
     await enter(key, secrets);
   } finally {

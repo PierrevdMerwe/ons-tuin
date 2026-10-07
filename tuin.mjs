@@ -171,7 +171,7 @@ async function exportAll(dir = path.join(here, 'private', 'export')) {
   const { key, garden } = await loadGarden();
   await mkdir(dir, { recursive: true });
   const ms = [...garden.memories].sort((a, b) => a.date.localeCompare(b.date));
-  const lines = ['# ons roos', ''];
+  const lines = ['# ons tuin', ''];
   const safe = (s) => s.replace(/[/\\:*?"<>|]+/g, '').slice(0, 60).trim();
   for (const m of ms) {
     if (m.kind === 'photo') {

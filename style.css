@@ -1,4 +1,4 @@
-/* ons roos: cream paper above ground, rich soil below */
+/* ons tuin: cream paper above ground, rich soil below */
 
 :root {
   --paper: #f5eee3;
@@ -113,11 +113,11 @@ button { cursor: pointer; }
 }
 
 .lock .sub {
+  max-width: 290px;
   margin: 12px 0 34px;
-  font: 400 12px/1.4 var(--sans);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  font: italic 500 19px/1.35 var(--serif);
   color: var(--ink-soft);
+  text-wrap: balance;
 }
 
 .lock-form {
@@ -148,7 +148,6 @@ button { cursor: pointer; }
 }
 .pw:focus { border-bottom-color: var(--rose); }
 .lock-form .btn { margin-top: 8px; }
-.lock-form .remember { margin-top: 6px; font-size: 13px; }
 .hint:empty { display: none; }
 .hint { margin: 0; font-style: italic; color: var(--ink-soft); }
 .shake { animation: shake 0.45s; }
