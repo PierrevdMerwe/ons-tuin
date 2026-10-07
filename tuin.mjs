@@ -84,6 +84,8 @@ async function setup() {
   console.log(`  github.com/settings/personal-access-tokens/new → only "${repo}" → Contents: Read and write`);
   const token = process.env.TUIN_TOKEN || (await askHidden('paste the token: ')).trim();
   if (!token) throw new Error('no token');
+  // A classic token (ghp_…) can reach every repo you have; this one ends up in a public repo.
+  if (token.startsWith('ghp_')) throw new Error('that is a classic token, which can reach all your repos. Make a fine-grained one (it starts with github_pat_) for just this repo');
 
   const expires = opts['skip-check'] ? null : await checkToken(repo, token);
   secrets = { since: day, repo, branch: opts.branch, token, expires };
