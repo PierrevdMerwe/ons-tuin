@@ -1191,6 +1191,101 @@ export function createGarden(canvas, { onFrame } = {}) {
     }
   }
 
+  // A brown South African tourism sign (the kind that points to beaches) on a
+  // galvanised pole, its pointed end showing which way to go.
+  const SIGN_TO = 'Holbaai';
+
+  function signSize(s) {
+    g.font = `500 ${15 * s}px Jost, Arial, sans-serif`;
+    return { h: 32 * s, w: 31 * s + g.measureText(SIGN_TO).width + 9 * s + 13 * s, tip: 13 * s };
+  }
+
+  function drawSign(x, s) {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const { w, h, tip } = signSize(s);
+    const sy = ground - 134 * s;
+    const cream = '#fbf7ef';
+
+    const pole = g.createLinearGradient(x - 2 * s, 0, x + 2 * s, 0);
+    pole.addColorStop(0, '#b9bec1');
+    pole.addColorStop(0.45, '#eef0f1');
+    pole.addColorStop(1, '#858a8d');
+    g.fillStyle = pole;
+    g.fillRect(x - 2 * s, sy - 8 * s, 4 * s, ground - sy + 12 * s);
+    g.fillStyle = '#767b7e';
+    g.beginPath();
+    g.ellipse(x, sy - 8 * s, 2.3 * s, 1.1 * s, 0, 0, TAU);
+    g.fill();
+
+    // the board, bolted to the right of the pole and pointing right
+    const board = (inset) => {
+      const l = x + 2 * s + inset, r = x + 2 * s + w - inset, t = sy + inset, b = sy + h - inset;
+      const p = tip - inset * 0.45, rad = 3 * s;
+      g.beginPath();
+      g.moveTo(l + rad, t);
+      g.lineTo(r - p, t);
+      g.lineTo(r, (t + b) / 2);
+      g.lineTo(r - p, b);
+      g.lineTo(l + rad, b);
+      g.quadraticCurveTo(l, b, l, b - rad);
+      g.lineTo(l, t + rad);
+      g.quadraticCurveTo(l, t, l + rad, t);
+      g.closePath();
+    };
+    g.shadowColor = 'rgba(30, 20, 10, 0.25)';
+    g.shadowBlur = 4 * dpr;
+    g.shadowOffsetY = 2 * dpr;
+    board(0);
+    g.fillStyle = '#673a1f';
+    g.fill();
+    g.shadowColor = 'transparent';
+    board(2.4 * s);
+    g.strokeStyle = cream;
+    g.lineWidth = 1.5 * s;
+    g.lineJoin = 'round';
+    g.stroke();
+
+    // the beach symbol: an umbrella over the waves
+    const ux = x + 2 * s + 16 * s, uy = sy + h / 2 - 1 * s;
+    g.fillStyle = cream;
+    g.strokeStyle = cream;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(ux - 8.5 * s, uy - 1 * s);
+    g.quadraticCurveTo(ux, uy - 13 * s, ux + 8.5 * s, uy - 1 * s);
+    for (let i = 2; i >= 0; i--) {
+      const a = ux - 8.5 * s + (17 * s * (i + 1)) / 3, b = ux - 8.5 * s + (17 * s * i) / 3;
+      g.quadraticCurveTo((a + b) / 2, uy - 3.2 * s, b, uy - 1 * s);
+    }
+    g.fill();
+    g.lineWidth = 1.4 * s;
+    g.beginPath();
+    g.moveTo(ux, uy - 5 * s);
+    g.lineTo(ux + 1.6 * s, uy + 7 * s);
+    g.stroke();
+    g.lineWidth = 1.3 * s;
+    for (const dy of [9, 12.5]) {
+      g.beginPath();
+      g.moveTo(ux - 9 * s, uy + dy * s);
+      for (let i = 0; i < 3; i++) {
+        const x0 = ux - 9 * s + i * 6 * s;
+        g.quadraticCurveTo(x0 + 1.5 * s, uy + (dy - 2) * s, x0 + 3 * s, uy + dy * s);
+        g.quadraticCurveTo(x0 + 4.5 * s, uy + (dy + 2) * s, x0 + 6 * s, uy + dy * s);
+      }
+      g.stroke();
+    }
+
+    g.font = `500 ${15 * s}px Jost, Arial, sans-serif`;
+    g.textBaseline = 'middle';
+    g.textAlign = 'left';
+    g.fillText(SIGN_TO, x + 2 * s + 31 * s, sy + h / 2 + 0.5 * s);
+
+    // the clamps holding the board to the pole
+    g.fillStyle = '#80868a';
+    g.fillRect(x - 2.7 * s, sy + 5 * s, 5.4 * s, 2.2 * s);
+    g.fillRect(x - 2.7 * s, sy + h - 7.2 * s, 5.4 * s, 2.2 * s);
+  }
+
   // a string of lights hanging under the title
   function lightSpots(u) {
     const y0 = top - 10, sag = 30 * u, out = [];
@@ -1303,6 +1398,7 @@ export function createGarden(canvas, { onFrame } = {}) {
     if (decor.has('berg')) drawMountain(night);
     if (decor.has('heining')) drawFence(u);
     if (decor.has('fontein')) drawFountain(Math.max(W * 0.17, 60 * u), u, t);
+    if (decor.has('straatpaal')) drawSign(Math.min(W * 0.66, W - signSize(u).w - 14 * u), u);
     if (decor.has('bankie')) drawBench(Math.min(W * 0.83, W - 66 * u), u);
     if (decor.has('liggies')) drawLights(u);
   }
@@ -1443,7 +1539,7 @@ export function createGarden(canvas, { onFrame } = {}) {
     skip() {
       if (replay) replay.start = -1e9;
     },
-    // which decorations to show: any of berg, heining, fontein, bankie, liggies, skoenlappers, voels
+    // which decorations to show: any of berg, heining, fontein, straatpaal, bankie, liggies, skoenlappers, voels
     setDecor(list) {
       decor = new Set(list);
       if (!running) draw(performance.now());

@@ -63,6 +63,7 @@ export const badSong = "plak 'n skakel na die liedjie (Spotify, YouTube of Apple
 export const DECOR = [
   ['fontein', "'n fontein", 'wat saggies borrel'],
   ['bankie', "'n bankie", 'om saam op te sit'],
+  ['straatpaal', "'n straatpaal", 'wat na Holbaai wys'],
   ['heining', "'n wit heining", 'agter in die tuin'],
   ['liggies', 'liggies', 'wat saans gloei'],
   ['skoenlappers', 'skoenlappers', 'om die rose'],
