@@ -66,13 +66,13 @@ export function openGarden(key, secrets) {
   const branch = secrets.branch || 'main';
   const urls = new Map();
 
-  async function gh(path, { method = 'GET', body, raw = false } = {}) {
+  async function gh(path, { method = 'GET', body } = {}) {
     const res = await fetch(`${API}/repos/${owner}/${repo}/${path}`, {
       method,
       cache: 'no-store',
       headers: {
         Authorization: `Bearer ${secrets.token}`,
-        Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+        Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
@@ -93,12 +93,16 @@ export function openGarden(key, secrets) {
     return data;
   }
 
-  // Straight from the repo: fresh even before GitHub Pages has redeployed.
+  // Straight from the repo: fresh even before GitHub Pages has redeployed. The contents
+  // API only tells us which blob it is: given a binary file, it sometimes guesses it's
+  // UTF-16 text and converts it, garbling the encrypted bytes. The blob API never does.
   async function fromRepo(path, ref = branch) {
-    const res = await gh(`contents/${path}?ref=${encodeURIComponent(ref)}`, { raw: true });
+    const res = await gh(`contents/${path}?ref=${encodeURIComponent(ref)}`);
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`GitHub said ${res.status}`);
-    return new Uint8Array(await res.arrayBuffer());
+    const { sha } = await res.json();
+    const blob = await ghJSON(`git/blobs/${sha}`);
+    return fromBase64(blob.content.replace(/\s/g, ''));
   }
 
   async function fromPages(path, fresh = false) {
@@ -120,14 +124,15 @@ export function openGarden(key, secrets) {
     secrets,
 
     async load() {
-      let bytes;
       try {
-        bytes = await fromRepo(MANIFEST);
+        const bytes = await fromRepo(MANIFEST);
+        return withDefaults(bytes ? await openJSON(key, bytes) : null);
       } catch (err) {
         if (!(err instanceof KeyError)) console.warn(err);
-        bytes = await fromPages(MANIFEST, true); // the key's gone or GitHub is down: Pages still works
+        // the key's gone or GitHub is down: the copy on Pages still works (a minute or two behind)
+        const bytes = await fromPages(MANIFEST, true);
+        return withDefaults(bytes ? await openJSON(key, bytes) : null);
       }
-      return withDefaults(bytes ? await openJSON(key, bytes) : null);
     },
 
     // A sealed picture as an object URL. Pages first; very new files come from the repo.

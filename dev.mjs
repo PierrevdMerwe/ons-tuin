@@ -56,12 +56,17 @@ async function github(req, res, route) {
   if ((m = route.match(/^repos\/[^/]+\/[^/]+\/contents\/(.+)$/))) {
     const file = safePath(decodeURIComponent(m[1].split('?')[0]));
     try {
-      const data = await readFile(file);
-      res.writeHead(200, { 'content-type': 'application/octet-stream' });
-      return res.end(data);
+      const data = await readFile(file); // like GitHub: the blob's id, then the bytes from git/blobs
+      const id = sha(data);
+      blobs.set(id, data);
+      return send(200, { type: 'file', size: data.length, sha: id });
     } catch {
       return send(404, { message: 'Not Found' });
     }
+  }
+  if ((m = route.match(/^repos\/[^/]+\/[^/]+\/git\/blobs\/([^/?]+)$/)) && req.method === 'GET') {
+    const data = blobs.get(m[1]);
+    return data ? send(200, { sha: m[1], size: data.length, encoding: 'base64', content: data.toString('base64') }) : send(404, { message: 'Not Found' });
   }
   if (route.match(/^repos\/[^/]+\/[^/]+\/git\/blobs$/) && req.method === 'POST') {
     const id = sha(body.content);
