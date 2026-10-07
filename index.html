@@ -64,7 +64,15 @@
       </div>
     </section>
 
-    <button class="info-btn" id="infoBtn" type="button" aria-label="hoe werk dit?">i</button>
+    <nav class="corner">
+      <button class="round-btn info-btn" id="infoBtn" type="button" aria-label="hoe werk dit?">i</button>
+      <button class="round-btn" id="decorBtn" type="button" aria-label="versier ons tuin">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5l1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7z"/><path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
+      </button>
+      <button class="round-btn" id="ideasBtn" type="button" aria-label="idees vir ons tuin">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.7 10.7c.8.7 1.2 1.4 1.2 2.3h5c0-.9.4-1.6 1.2-2.3A6 6 0 0 0 12 3z"/></svg>
+      </button>
+    </nav>
     <button class="plant-fab" id="plantFab" type="button" aria-label="plant iets">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28V15"/><path d="M16 17c0-5 3.5-8.5 9-8.5 0 5.5-3.5 8.5-9 8.5z"/><path d="M16 20c0-4-3-7-7.5-7 0 4.5 3 7 7.5 7z"/></svg>
     </button>
@@ -90,6 +98,36 @@
         <button class="btn btn-soft" id="lockBtn" type="button">sluit die tuin</button>
       </div>
       <p class="fine" id="keyNote"></p>
+    </div>
+  </dialog>
+
+  <!-- decorating: low, so the garden shows above it as things switch on -->
+  <dialog class="sheet sheet-low" id="decor" aria-labelledby="decorTitle">
+    <div class="sheet-body">
+      <header class="sheet-head">
+        <h2 id="decorTitle">versier ons tuin</h2>
+        <button class="close" type="button" data-close aria-label="maak toe">&times;</button>
+      </header>
+      <p class="sheet-sub">wat jy hier aanskakel, sien ons albei</p>
+      <div class="decor-list" id="decorList"></div>
+    </div>
+  </dialog>
+
+  <!-- the idea board -->
+  <dialog class="sheet" id="ideas" aria-labelledby="ideasTitle">
+    <div class="sheet-body">
+      <header class="sheet-head">
+        <h2 id="ideasTitle">idees vir ons tuin</h2>
+        <button class="close" type="button" data-close aria-label="maak toe">&times;</button>
+      </header>
+      <p class="sheet-sub" id="ideasIntro"></p>
+      <form class="idea-form" id="ideaForm" novalidate>
+        <textarea id="ideaText" rows="3" placeholder="'n swaai, 'n katjie, sneeu in Julie…"></textarea>
+        <div class="who-options" id="ideaWho"></div>
+        <p class="msg" id="ideaMsg" role="status" aria-live="polite"></p>
+        <button class="btn" type="submit" id="ideaGo">plaas</button>
+      </form>
+      <ol class="idea-list" id="ideaList"></ol>
     </div>
   </dialog>
 

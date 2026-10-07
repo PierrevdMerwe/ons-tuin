@@ -35,6 +35,15 @@ let garden = null;   // store.js: reading and planting
 let sky = null;      // garden.js: the bush
 let roots = null;    // roots.js: what's drawn below ground
 let memories = [];
+let decor = []; // decorations switched on: shared, saved in the garden
+let ideas = []; // the idea board
+
+function take(data) {
+  memories = data.memories;
+  decor = data.decor;
+  ideas = data.ideas;
+  sky?.setDecor(decor);
+}
 
 /* ---------- toast ---------- */
 
@@ -231,7 +240,7 @@ function setupHero() {
 
 async function loadMemories() {
   try {
-    memories = await garden.memories();
+    take(await garden.load());
   } catch (err) {
     console.error(err);
     toast(err.message);
@@ -429,6 +438,135 @@ function setupDialogs() {
 
   for (const b of [$('#plantFab'), $('#plantCta')]) b.addEventListener('click', openPlanting);
   setupPlanting();
+  setupDecor();
+  setupIdeas();
+}
+
+/* ---------- decorating: switch things on and off, seen by both of you ---------- */
+
+let decorBefore = null;
+
+function setupDecor() {
+  const list = $('#decorList');
+  for (const [id, name, sub] of say.DECOR) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'decor-item';
+    b.dataset.id = id;
+    b.append(text('span', 'tick', ''), text('span', 'name', name), text('span', 'sub', sub));
+    b.addEventListener('click', () => {
+      decor = decor.includes(id) ? decor.filter((d) => d !== id) : [...decor, id];
+      sky.setDecor(decor); // shows straight away; saved when the sheet closes
+      paintDecor();
+    });
+    list.append(b);
+  }
+  $('#decorBtn').addEventListener('click', () => {
+    decorBefore = [...decor];
+    paintDecor();
+    scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    $('#decor').showModal();
+  });
+  $('#decor').addEventListener('close', saveDecor);
+}
+
+function paintDecor() {
+  for (const b of document.querySelectorAll('.decor-item')) b.setAttribute('aria-pressed', String(decor.includes(b.dataset.id)));
+}
+
+async function saveDecor() {
+  const before = decorBefore;
+  decorBefore = null;
+  if (!before || [...before].sort().join() === [...decor].sort().join()) return;
+  const wanted = [...decor];
+  try {
+    take(await garden.change((g) => ({ ...g, decor: wanted }), 'versier die tuin'));
+    toast(say.decorSaved);
+  } catch (err) {
+    console.error(err);
+    decor = before;
+    sky.setDecor(decor);
+    toast(err instanceof KeyError ? say.keyExpired(gardeners[0]) : say.saveFailed(err.message), 6000);
+  }
+}
+
+/* ---------- the idea board ---------- */
+
+function setupIdeas() {
+  $('#ideasIntro').textContent = say.ideasIntro(gardeners[0]);
+  whoPicker($('#ideaWho'), 'idea-by');
+  $('#ideasBtn').addEventListener('click', async () => {
+    paintIdeas();
+    $('#ideaMsg').textContent = '';
+    $('#ideas').showModal();
+    try { // fetch the latest, so the other one's ideas show up too
+      take(await garden.load());
+      paintIdeas();
+    } catch {}
+  });
+  $('#ideaForm').addEventListener('submit', postIdea);
+}
+
+function paintIdeas() {
+  const list = $('#ideaList');
+  list.replaceChildren();
+  const sorted = [...ideas].sort((a, b) => Number(Boolean(a.done)) - Number(Boolean(b.done)) || b.at.localeCompare(a.at));
+  if (!sorted.length) list.append(text('li', 'empty', say.noIdeas));
+  for (const idea of sorted) {
+    const li = document.createElement('li');
+    li.className = `idea${idea.done ? ' done' : ''}`;
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'idea-check';
+    check.setAttribute('aria-pressed', String(Boolean(idea.done)));
+    check.setAttribute('aria-label', say.ideaDone);
+    check.addEventListener('click', () => toggleIdea(idea.id));
+    const body = document.createElement('div');
+    body.append(text('p', 'idea-text', idea.text), text('p', 'idea-meta', [idea.by, say.shortDate(new Date(idea.at)), idea.done && say.ideaDone].filter(Boolean).join(' · ')));
+    li.append(check, body);
+    list.append(li);
+  }
+}
+
+async function postIdea(event) {
+  event.preventDefault();
+  const words = $('#ideaText').value.trim();
+  const msg = $('#ideaMsg');
+  if (!words) return $('#ideaText').focus();
+  const by = pickedBy('idea-by');
+  store.set('roos-by', by);
+  const idea = { id: newId(isoDay(now())), text: words, by, at: new Date().toISOString() };
+  const go = $('#ideaGo');
+  go.disabled = true;
+  msg.textContent = '…';
+  try {
+    take(await garden.change((g) => ({ ...g, ideas: [...g.ideas, idea] }), `an idea${by ? ` (${by})` : ''}`));
+    $('#ideaText').value = '';
+    msg.textContent = '';
+    paintIdeas();
+  } catch (err) {
+    console.error(err);
+    msg.textContent = err instanceof KeyError ? say.keyExpired(gardeners[0]) : say.saveFailed(err.message);
+  } finally {
+    go.disabled = false;
+  }
+}
+
+async function toggleIdea(id) {
+  const idea = ideas.find((i) => i.id === id);
+  if (!idea) return;
+  const done = !idea.done;
+  idea.done = done; // show it straight away
+  paintIdeas();
+  try {
+    take(await garden.change((g) => ({ ...g, ideas: g.ideas.map((i) => (i.id === id ? { ...i, done } : i)) }), done ? 'an idea, done' : 'an idea, reopened'));
+    paintIdeas();
+  } catch (err) {
+    console.error(err);
+    idea.done = !done;
+    paintIdeas();
+    toast(err instanceof KeyError ? say.keyExpired(gardeners[0]) : say.saveFailed(err.message), 6000);
+  }
 }
 
 function updateInfo() {
@@ -454,23 +592,29 @@ let tab = store.get('roos-tab') || 'photo';
 let picked = []; // [{ file, full, thumb, w, h, date, caption }]
 let planting = false;
 
-function setupPlanting() {
-  for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('click', () => selectTab(b.dataset.tab));
-
-  const who = $('#who');
+// "geplant deur" buttons, remembering who used this phone last
+function whoPicker(container, name) {
   const last = store.get('roos-by');
-  gardeners.forEach((name, i) => {
+  gardeners.forEach((gardener, i) => {
     const label = document.createElement('label');
     const input = document.createElement('input');
     input.type = 'radio';
-    input.name = 'by';
-    input.value = name;
-    input.checked = last ? last === name : i === 0;
+    input.name = name;
+    input.value = gardener;
+    input.checked = last ? last === gardener : i === 0;
     const span = document.createElement('span');
-    span.textContent = name;
+    span.textContent = gardener;
     label.append(input, span);
-    who.append(label);
+    container.append(label);
   });
+}
+
+const pickedBy = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+
+function setupPlanting() {
+  for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('click', () => selectTab(b.dataset.tab));
+
+  whoPicker($('#who'), 'by');
 
   $('#photoInput').addEventListener('change', (e) => {
     addPhotos([...e.target.files]);
@@ -660,7 +804,7 @@ async function plant(event) {
   event.preventDefault();
   if (planting) return;
   const msg = $('#plantMsg');
-  const by = document.querySelector('input[name="by"]:checked')?.value || '';
+  const by = pickedBy('by');
   const today = isoDay(now());
   const planted = new Date().toISOString();
   const items = [];
@@ -716,7 +860,7 @@ async function plant(event) {
   go.disabled = true;
   const what = { photo: `${items.length} photo${items.length === 1 ? '' : 's'}`, note: 'a note', song: 'a song' }[tab];
   try {
-    memories = await garden.plant(items, `plant ${what}${by ? ` (${by})` : ''}`, (p) => (msg.textContent = say.plantProgress(p)));
+    take(await garden.plant(items, `plant ${what}${by ? ` (${by})` : ''}`, (p) => (msg.textContent = say.plantProgress(p))));
     for (const item of items) for (const [path, blob] of Object.entries(item.blobs || {})) garden.cache(path, blob);
     planting = false;
     $('#plant').close();

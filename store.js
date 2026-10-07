@@ -2,7 +2,7 @@
  * Where the memories live: encrypted files in garden/ in this same repo.
  *
  *   garden/seed.json      the salt, plus the GitHub key sealed with the password
- *   garden/memories.bin   the list of everything planted (sealed JSON)
+ *   garden/memories.bin   everything planted, plus the decorations and the idea board (sealed JSON)
  *   garden/photos/…       full photos, garden/thumbs/… small ones (sealed JPEGs)
  *
  * Reading goes through GitHub Pages like any other file. Planting writes one
@@ -108,12 +108,18 @@ export function openGarden(key, secrets) {
     return new Uint8Array(await res.arrayBuffer());
   }
 
-  const emptyGarden = () => ({ v: 1, memories: [] });
+  // { memories, decor, ideas }, filling in what older files don't have yet
+  const withDefaults = (data) => ({ v: 1, ...data, memories: data?.memories ?? [], decor: data?.decor ?? [], ideas: data?.ideas ?? [] });
+
+  async function upload(bytes) {
+    const { sha } = await ghJSON('git/blobs', { method: 'POST', body: { content: toBase64(bytes), encoding: 'base64' } });
+    return sha;
+  }
 
   return {
     secrets,
 
-    async memories() {
+    async load() {
       let bytes;
       try {
         bytes = await fromRepo(MANIFEST);
@@ -121,7 +127,7 @@ export function openGarden(key, secrets) {
         if (!(err instanceof KeyError)) console.warn(err);
         bytes = await fromPages(MANIFEST, true); // the key's gone or GitHub is down: Pages still works
       }
-      return bytes ? (await openJSON(key, bytes)).memories : [];
+      return withDefaults(bytes ? await openJSON(key, bytes) : null);
     },
 
     // A sealed picture as an object URL. Pages first; very new files come from the repo.
@@ -143,18 +149,15 @@ export function openGarden(key, secrets) {
     },
 
     /*
-     * Plant new memories in one commit. `items` is [{ memory, files: [{ path, bytes }] }].
-     * Only ever adds: the list is re-read from the repo, the new ones appended, and
-     * the commit has to fast-forward, so two phones planting at once both land.
+     * Change the garden in one commit: upload `files`, then re-read the list from the
+     * repo, let `mutate` change it, and commit. The commit has to fast-forward, so if
+     * the other phone got in first, it goes again on top of theirs.
      */
-    async plant(items, message, onProgress = () => {}) {
-      const files = items.flatMap((i) => i.files);
+    async change(mutate, message, files = [], onProgress = () => {}) {
       const blobs = [];
       for (const [n, f] of files.entries()) {
         onProgress({ step: 'upload', done: n, total: files.length });
-        const sealed = await seal(key, f.bytes);
-        const { sha } = await ghJSON('git/blobs', { method: 'POST', body: { content: toBase64(sealed), encoding: 'base64' } });
-        blobs.push({ path: f.path, sha });
+        blobs.push({ path: f.path, sha: await upload(await seal(key, f.bytes)) });
       }
       onProgress({ step: 'commit', done: files.length, total: files.length });
 
@@ -162,12 +165,9 @@ export function openGarden(key, secrets) {
         const ref = await ghJSON(`git/ref/heads/${branch}`);
         const head = ref.object.sha;
         const commit = await ghJSON(`git/commits/${head}`);
-        const current = await fromRepo(MANIFEST, head).then((b) => (b ? openJSON(key, b) : emptyGarden()));
-        const have = new Set(current.memories.map((m) => m.id));
-        const next = { ...current, memories: [...current.memories, ...items.map((i) => i.memory).filter((m) => !have.has(m.id))] };
-
-        const list = await sealJSON(key, next);
-        const { sha: listSha } = await ghJSON('git/blobs', { method: 'POST', body: { content: toBase64(list), encoding: 'base64' } });
+        const current = withDefaults(await fromRepo(MANIFEST, head).then((b) => (b ? openJSON(key, b) : null)));
+        const next = mutate(structuredClone(current));
+        const listSha = await upload(await sealJSON(key, next));
         const tree = await ghJSON('git/trees', {
           method: 'POST',
           body: {
@@ -178,12 +178,21 @@ export function openGarden(key, secrets) {
         const made = await ghJSON('git/commits', { method: 'POST', body: { message, tree: tree.sha, parents: [head] } });
         try {
           await ghJSON(`git/refs/heads/${branch}`, { method: 'PATCH', body: { sha: made.sha, force: false } });
-          return next.memories;
+          return next;
         } catch (err) {
-          if (err.status !== 422) throw err; // 422: someone else planted first; go again on top of theirs
+          if (err.status !== 422) throw err; // 422: someone else got in first
         }
       }
       throw new Error('the garden was busy, try again in a moment');
+    },
+
+    // Plant new memories. `items` is [{ memory, files: [{ path, bytes }] }]. Only ever adds.
+    plant(items, message, onProgress) {
+      return this.change((g) => {
+        const have = new Set(g.memories.map((m) => m.id));
+        g.memories.push(...items.map((i) => i.memory).filter((m) => !have.has(m.id)));
+        return g;
+      }, message, items.flatMap((i) => i.files), onProgress);
     },
   };
 }

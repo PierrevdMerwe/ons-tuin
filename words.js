@@ -58,3 +58,19 @@ export const noDate = 'kies asseblief wanneer dit was';
 export const tooEarly = 'dit kan nie in die toekoms wees nie';
 export const emptyNote = 'skryf eers iets';
 export const badSong = "plak 'n skakel na die liedjie (Spotify, YouTube of Apple Music)";
+
+// The decorations you can switch on: [id, name, a few words]. The ids are drawn in garden.js.
+export const DECOR = [
+  ['fontein', "'n fontein", 'wat saggies borrel'],
+  ['bankie', "'n bankie", 'om saam op te sit'],
+  ['heining', "'n wit heining", 'agter in die tuin'],
+  ['liggies', 'liggies', 'wat saans gloei'],
+  ['skoenlappers', 'skoenlappers', 'om die rose'],
+  ['voels', 'voëltjies', 'wat soms verbyvlieg'],
+  ['berg', 'Tafelberg', 'in die verte'],
+];
+export const decorSaved = 'gestoor. ons albei sien dit nou.';
+export const saveFailed = (msg) => `Kon nie stoor nie: ${msg}`;
+export const ideasIntro = (builder) => `Wat moet ons nog in die tuin hê? Skryf dit hier, dan bou ${builder} dit in.`;
+export const noIdeas = 'nog geen idees nie. skryf die eerste een!';
+export const ideaDone = 'gedoen';

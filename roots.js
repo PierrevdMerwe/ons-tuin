@@ -79,8 +79,10 @@ export function layout(memories, { since, today, width }) {
 
 /* ---------- drawing ---------- */
 
-const tapX = (L, y) => L.cx + 8 * Math.sin(y / 150) + 4 * Math.sin(y / 53 + 1.3);
-const tapW = (L, y) => 2.6 + 12 * Math.max(0, 1 - y / L.tipY) ** 0.75;
+// The taproot leaves the stem straight down, exactly under it, then starts to wander.
+const tapX = (L, y) => L.cx + Math.min(1, y / 90) * (8 * Math.sin(y / 150) + 4 * Math.sin(y / 53));
+// About as thick as the stem where they meet, swelling below the surface, thinning to the tip.
+const tapW = (L, y) => 2.6 + 12 * Math.min(1, 0.45 + y / 110) * Math.max(0, 1 - y / L.tipY) ** 0.75;
 
 function bez(c, t) {
   const u = 1 - t, a = u * u * u, b = 3 * u * u * t, d = 3 * u * t * t, e = t * t * t;
@@ -103,6 +105,19 @@ function taper(pts, w0, w1) {
     const [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(pts.length - 1, i + 1)];
     const len = Math.hypot(nx - px, ny - py) || 1;
     const w = (w0 + (w1 - w0) * (i / (pts.length - 1))) / 2;
+    left.push([x - ((ny - py) / len) * w, y + ((nx - px) / len) * w]);
+    right.push([x + ((ny - py) / len) * w, y - ((nx - px) / len) * w]);
+  });
+  return `${line(left)}L${right.reverse().map(([x, y]) => `${f(x)} ${f(y)}`).join('L')}Z`;
+}
+
+// Like taper, but with the width given for each point's depth.
+function taperBy(pts, widthAt) {
+  const left = [], right = [];
+  pts.forEach(([x, y], i) => {
+    const [px, py] = pts[Math.max(0, i - 1)], [nx, ny] = pts[Math.min(pts.length - 1, i + 1)];
+    const len = Math.hypot(nx - px, ny - py) || 1;
+    const w = (i === pts.length - 1 ? 1.4 : widthAt(y)) / 2;
     left.push([x - ((ny - py) / len) * w, y + ((nx - px) / len) * w]);
     right.push([x + ((ny - py) / len) * w, y - ((nx - px) / len) * w]);
   });
@@ -151,9 +166,9 @@ export function drawRoots(container, memories, { since, today, onOpen, picture, 
   // the taproot, revealed as you scroll down it
   const tap = el('g', { class: 'taproot', mask: 'url(#tap-mask)' }, svg);
   const tapPts = [];
-  for (let y = -30; y <= L.tipY; y += 8) tapPts.push([tapX(L, Math.max(y, 0)), y]);
+  for (let y = -4; y <= L.tipY; y += 8) tapPts.push([tapX(L, Math.max(y, 0)), y]);
   tapPts.push([tapX(L, L.tipY), L.tipY + 6]);
-  el('path', { d: taper(tapPts, tapW(L, 0), 1.4) }, tap);
+  el('path', { d: taperBy(tapPts, (y) => tapW(L, Math.max(0, y))) }, tap);
   let hairs = '';
   for (let y = 36; y < L.tipY - 20; y += 26 + r() * 30) {
     const s = r() < 0.5 ? -1 : 1;

@@ -5,6 +5,8 @@ A rose that was planted on the day we started dating and grows a little every da
 - **Lock:** a password opens it. Everything in `garden/` is encrypted with that password, so the repo and site can be public (same idea as briefie).
 - **Planting:** the green button adds photos, notes or songs straight from the site (phone or laptop). Each planting is a commit to this repo.
 - **Nothing can be removed from the site.** Removing something means a code change (`node tuin.mjs remove`).
+- **Decorations (✦):** switch on a fountain, a bench, a picket fence, string lights, butterflies, birds or Table Mountain in the distance. The choice is saved in the garden, so you both see the same thing.
+- **Idea board (bulb):** both of you can post ideas for what to add next, and tick them off once they're built.
 - **Extras:** the sky follows the time of day (stars, moon and fireflies at night). A note can be a *saadjie* (seed) that stays closed until a date you pick. "Speel ons storie" in the ⓘ panel replays the whole growth. Tap a rose to see which year it's from.
 
 Free hosting: GitHub Pages. No build step and no framework.
@@ -56,5 +58,6 @@ Open the site, unlock it, tap the green button, and choose photos. The date fill
 | Wording | `words.js`, plus the ⓘ text in `index.html` |
 | Names | `data-gardeners`, `data-for` on `<body>` in `index.html` (the start date is set by `tuin.mjs setup`) |
 | Rose colours per year | `PALETTES` in `garden.js` |
+| A new decoration | draw it in `garden.js` (next to `drawFountain`, then add it to `drawBackdrop`) and list it in `DECOR` in `words.js` |
 
 Before sending the link, run `git status` and check that `private/` never shows up.
