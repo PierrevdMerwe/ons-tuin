@@ -60,4 +60,6 @@ Open the site, unlock it, tap the green button, and choose photos. The date fill
 | Rose colours per year | `PALETTES` in `garden.js` |
 | A new decoration | draw it in `garden.js` (next to `drawFountain`, then add it to `drawBackdrop`) and list it in `DECOR` in `words.js` |
 
+After changing any code, bump `VERSION` (the `v=` number, in two places near the top of `index.html`), so phones pick up the change on the next refresh.
+
 Before sending the link, run `git status` and check that `private/` never shows up.
