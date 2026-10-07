@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="af">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ons roos</title>
+  <meta name="description" content="'n roos wat elke dag 'n bietjie groei">
+  <meta property="og:title" content="ons roos">
+  <meta property="og:description" content="'n roos wat elke dag 'n bietjie groei">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f5eee3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='14' r='9' fill='%238c1630'/%3E%3Cpath d='M16 9a5 5 0 1 0 5 5' fill='none' stroke='%23e2788a' stroke-width='1.6'/%3E%3Cpath d='M16 23v7' stroke='%2346663a' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<!--
+  data-gardeners  who can plant things, in the "geplant deur" buttons
+  data-for        who the anniversary greeting is for
+  (the day it all started is sealed in garden/seed.json by tuin.mjs setup)
+-->
+<body data-gardeners="Pierre, Karla" data-for="Karla">
+
+  <!-- 1. the lock -->
+  <main class="lock" id="lock">
+    <canvas class="lock-rose" id="lockRose" aria-hidden="true"></canvas>
+    <h1 class="title">ons roos</h1>
+    <p class="sub">'n roos wat elke dag groei</p>
+    <form class="lock-form" id="lockForm" autocomplete="off">
+      <label class="label" for="pw">wagwoord</label>
+      <input class="pw" id="pw" name="pw" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      <button class="btn" id="openBtn" type="submit">maak oop</button>
+      <label class="check remember"><input type="checkbox" id="remember" checked> onthou my op hierdie toestel</label>
+      <!-- Optional hint under the box. Leave it empty for no hint. -->
+      <p class="hint"></p>
+      <p class="msg" id="lockMsg" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <!-- 2. the garden -->
+  <div class="garden" id="garden" hidden>
+    <section class="hero" id="hero">
+      <canvas class="sky" id="sky" role="img" aria-label="ons rosebos"></canvas>
+      <header class="hero-text" id="heroText">
+        <h1 class="title">ons roos</h1>
+        <p class="together" id="together"></p>
+        <p class="bloom" id="bloom"></p>
+      </header>
+      <p class="rose-tip" id="roseTip" hidden></p>
+      <p class="replay-date" id="replayDate" aria-hidden="true"></p>
+    </section>
+
+    <section class="soil" id="soil">
+      <svg class="ground-edge" viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 13 C 70 9, 130 15, 200 10 S 330 14, 400 11 V 24 H 0 Z"/>
+      </svg>
+      <a class="dig" href="#roots" id="dig">ons wortels
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </a>
+      <div class="roots" id="roots"></div>
+      <div class="root-end">
+        <button class="btn btn-light" id="plantCta" type="button">plant iets</button>
+      </div>
+    </section>
+
+    <button class="info-btn" id="infoBtn" type="button" aria-label="hoe werk dit?">i</button>
+    <button class="plant-fab" id="plantFab" type="button" aria-label="plant iets">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28V15"/><path d="M16 17c0-5 3.5-8.5 9-8.5 0 5.5-3.5 8.5-9 8.5z"/><path d="M16 20c0-4-3-7-7.5-7 0 4.5 3 7 7.5 7z"/></svg>
+    </button>
+  </div>
+
+  <!-- how it works -->
+  <dialog class="sheet" id="info" aria-labelledby="infoTitle">
+    <div class="sheet-body">
+      <header class="sheet-head">
+        <h2 id="infoTitle">hoe ons tuin werk</h2>
+        <button class="close" type="button" data-close aria-label="maak toe">&times;</button>
+      </header>
+      <p class="stats" id="stats"></p>
+      <div class="prose">
+        <p>Hierdie roos is geplant op <span data-since-text></span>, die dag toe ons begin uitgaan het. Sy groei elke dag 'n klein bietjie, so kom kyk gereeld.</p>
+        <p>Op ons eerste herdenking blom die eerste roos. Elke jaar daarna kom daar meer by: twee nuwes in jaar twee, drie in jaar drie, en so aan, totdat dit 'n hele rosebos is. Elke jaar se rose het hul eie kleur. Raak aan 'n roos om te sien uit watter jaar sy kom.</p>
+        <p>Onder die grond lê ons wortels. Elke foto, briefie of liedjie wat ons plant, kry sy eie wortel op die dag waarop dit gebeur het, en hoe ouer 'n wortel word, hoe meer vertak hy.</p>
+        <p>'n Briefie kan ook 'n saadjie wees: dan bly dit toe tot op die dag wat jy kies.</p>
+        <p>En wat geplant is, bly geplant. Niks kan weer uitgegrawe word nie.</p>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn" id="replayBtn" type="button">speel ons storie</button>
+        <button class="btn btn-soft" id="lockBtn" type="button">sluit die tuin</button>
+      </div>
+      <p class="fine" id="keyNote"></p>
+    </div>
+  </dialog>
+
+  <!-- planting -->
+  <dialog class="sheet" id="plant" aria-labelledby="plantTitle">
+    <form class="sheet-body" id="plantForm" novalidate>
+      <header class="sheet-head">
+        <h2 id="plantTitle">plant iets</h2>
+        <button class="close" type="button" data-close aria-label="maak toe">&times;</button>
+      </header>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="photo" aria-selected="true">foto's</button>
+        <button type="button" role="tab" data-tab="note" aria-selected="false">'n briefie</button>
+        <button type="button" role="tab" data-tab="song" aria-selected="false">'n liedjie</button>
+      </div>
+
+      <section class="tab" data-tab="photo" role="tabpanel">
+        <label class="pick">
+          <input type="file" id="photoInput" accept="image/*" multiple>
+          <span class="pick-title">kies foto's</span>
+          <span class="pick-sub">elkeen kry sy eie wortel, op die dag waarop dit geneem is</span>
+        </label>
+        <ol class="picked" id="picked"></ol>
+      </section>
+
+      <section class="tab" data-tab="note" role="tabpanel" hidden>
+        <textarea id="noteText" rows="7" placeholder="skryf iets…"></textarea>
+        <label class="field"><span>wanneer?</span><input type="date" id="noteDate"></label>
+        <label class="check"><input type="checkbox" id="capsule"> maak dit 'n saadjie wat eers later oopgaan</label>
+        <label class="field" id="opensField" hidden><span>gaan oop op</span><input type="date" id="noteOpens"></label>
+      </section>
+
+      <section class="tab" data-tab="song" role="tabpanel" hidden>
+        <label class="field"><span>skakel</span><input type="url" id="songUrl" inputmode="url" placeholder="Spotify, YouTube of Apple Music"></label>
+        <label class="field"><span>liedjie</span><input id="songTitle" autocomplete="off"></label>
+        <label class="field"><span>deur</span><input id="songArtist" autocomplete="off"></label>
+        <label class="field"><span>hoekom hierdie een?</span><textarea id="songWhy" rows="3"></textarea></label>
+        <label class="field"><span>wanneer?</span><input type="date" id="songDate"></label>
+      </section>
+
+      <fieldset class="who">
+        <legend>geplant deur</legend>
+        <div class="who-options" id="who"></div>
+      </fieldset>
+      <p class="forever">Wat geplant is, bly geplant. Dit kan nie weer uitgehaal word nie.</p>
+      <p class="msg" id="plantMsg" role="status" aria-live="polite"></p>
+      <button class="btn" type="submit" id="plantGo">plant dit</button>
+    </form>
+  </dialog>
+
+  <!-- looking at a memory -->
+  <dialog class="viewer" id="viewer" aria-label="herinnering">
+    <div class="viewer-body" id="viewerBody"></div>
+    <nav class="viewer-nav">
+      <button class="nav" id="prevBtn" type="button" aria-label="vorige">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <button class="nav" type="button" data-close aria-label="maak toe">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <button class="nav" id="nextBtn" type="button" aria-label="volgende">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </nav>
+  </dialog>
+
+  <p class="toast" id="toast" role="status" aria-live="polite"></p>
+</body>
+</html>

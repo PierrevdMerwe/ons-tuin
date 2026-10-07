@@ -1,0 +1,10 @@
+{
+  "name": "ons-tuin",
+  "private": true,
+  "type": "module",
+  "description": "A rose that grows a little every day, with our memories in its roots.",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "setup": "node tuin.mjs setup"
+  }
+}

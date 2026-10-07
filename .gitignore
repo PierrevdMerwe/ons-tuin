@@ -1,0 +1,5 @@
+# your decrypted backups never leave your laptop
+private/
+.claude/
+.DS_Store
+node_modules/
