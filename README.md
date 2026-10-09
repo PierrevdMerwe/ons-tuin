@@ -7,6 +7,7 @@ A rose that was planted on the day we started dating and grows a little every da
 - **Nothing can be removed from the site.** Removing something means a code change (`node tuin.mjs remove`).
 - **Decorations (✦):** switch on a fountain, a bench, a picket fence, string lights, butterflies, birds or Table Mountain in the distance. The choice is saved in the garden, so you both see the same thing.
 - **Idea board (bulb):** both of you can post ideas for what to add next, and tick them off once they're built.
+- **The anniversary letter:** "lees dit eerste" in the ⓘ panel (with a red dot until it's been read) unrolls a scroll with the letter and crayon drawings of the two of us. Tapping the underlined word sends a news ticker across the bottom.
 - **Extras:** the sky follows the time of day (stars, moon and fireflies at night). A note can be a *saadjie* (seed) that stays closed until a date you pick. "Speel ons storie" in the ⓘ panel replays the whole growth. Tap a rose to see which year it's from.
 
 Free hosting: GitHub Pages. No build step and no framework.
@@ -58,6 +59,7 @@ Open the site, unlock it, tap the green button, and choose photos. The date fill
 | Wording | `words.js`, plus the ⓘ text in `index.html` |
 | Names | `data-gardeners`, `data-for` on `<body>` in `index.html` (the start date is set by `tuin.mjs setup`) |
 | Rose colours per year | `PALETTES` in `garden.js` |
+| The letter | edit `private/letter.txt` (gitignored), run `node tuin.mjs letter`, then commit and push `garden/letter.bin`. In the text: `# greeting`, `~ sign-off`, `{vis}` for a drawing from `doodles.js`, `[word|ticker text]`, and `<3` for a heart |
 | A new decoration | draw it in `garden.js` (next to `drawFountain`, then add it to `drawBackdrop`) and list it in `DECOR` in `words.js` |
 
 After changing any code, bump `VERSION` (the `v=` number, in two places near the top of `index.html`), so phones pick up the change on the next refresh.

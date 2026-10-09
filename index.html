@@ -12,18 +12,18 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='14' r='9' fill='%238c1630'/%3E%3Cpath d='M16 9a5 5 0 1 0 5 5' fill='none' stroke='%23e2788a' stroke-width='1.6'/%3E%3Cpath d='M16 23v7' stroke='%2346663a' stroke-width='2'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500;600&family=IM+Fell+English:ital@0;1&family=Pinyon+Script&display=swap">
   <!-- VERSION: bump it here and in the script below whenever the code changes, so phones
        fetch the new files straight away (GitHub Pages otherwise lets them keep the old
        ones for up to 10 minutes, even after a refresh). -->
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
   <script>
     (() => {
-      const v = 5;
+      const v = 6;
       const map = document.createElement('script');
       map.type = 'importmap';
       map.textContent = JSON.stringify({
-        imports: Object.fromEntries(['app', 'garden', 'roots', 'store', 'words', 'crypto'].map((f) => [`./${f}.js`, `./${f}.js?v=${v}`])),
+        imports: Object.fromEntries(['app', 'garden', 'roots', 'store', 'words', 'crypto', 'letter', 'doodles'].map((f) => [`./${f}.js`, `./${f}.js?v=${v}`])),
       });
       document.currentScript.after(map);
     })();
@@ -96,7 +96,10 @@
   <dialog class="sheet" id="info" aria-labelledby="infoTitle">
     <div class="sheet-body">
       <header class="sheet-head">
-        <h2 id="infoTitle">hoe ons tuin werk</h2>
+        <div class="head-row">
+          <h2 id="infoTitle">hoe ons tuin werk</h2>
+          <button class="letter-pill" id="letterPill" type="button" hidden>lees dit eerste<span class="dot" id="letterDot" aria-hidden="true"></span></button>
+        </div>
         <button class="close" type="button" data-close aria-label="maak toe">&times;</button>
       </header>
       <p class="stats" id="stats"></p>
@@ -112,6 +115,20 @@
         <button class="btn btn-soft" id="lockBtn" type="button">sluit die tuin</button>
       </div>
       <p class="fine" id="keyNote"></p>
+    </div>
+  </dialog>
+
+  <!-- the anniversary letter: a scroll that unrolls (the words are sealed in garden/letter.bin) -->
+  <dialog class="letter" id="letter" aria-label="'n brief vir jou">
+    <div class="scroll">
+      <div class="rod" aria-hidden="true"></div>
+      <div class="paper"><div class="paper-inner" id="letterBody" tabindex="-1" autofocus></div></div>
+      <div class="rod" aria-hidden="true"></div>
+    </div>
+    <button class="roll-up" id="rollUp" type="button">rol dit op</button>
+    <div class="ticker" id="ticker" aria-live="polite">
+      <span class="flash">nuusflits</span>
+      <span class="crawl"><span class="crawl-text" id="tickerText"></span></span>
     </div>
   </dialog>
 

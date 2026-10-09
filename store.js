@@ -14,6 +14,7 @@ import { deriveKey, fromBase64, open, openJSON, seal, sealJSON, toBase64 } from 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const API = LOCAL ? '/__github' : 'https://api.github.com'; // dev.mjs pretends to be GitHub
 export const MANIFEST = 'garden/memories.bin';
+const LETTER = 'garden/letter.bin';
 
 export async function loadSeed() {
   const res = await fetch('garden/seed.json', { cache: 'no-cache' });
@@ -146,6 +147,12 @@ export function openGarden(key, secrets) {
         urls.get(path).catch(() => urls.delete(path));
       }
       return urls.get(path);
+    },
+
+    // The anniversary letter (made by `node tuin.mjs letter`), or null if there isn't one.
+    async letter() {
+      const sealed = (await fromPages(LETTER).catch(() => null)) ?? (await fromRepo(LETTER).catch(() => null));
+      return sealed ? new TextDecoder().decode(await open(key, sealed)) : null;
     },
 
     // Keep the uploader's own copy so new photos show before Pages catches up.

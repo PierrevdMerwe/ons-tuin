@@ -5,10 +5,13 @@
  *   roots.js   the roots and the memories at their tips
  *   store.js   reading and planting memories (encrypted, in this repo)
  *   words.js   everything it says
+ *   letter.js  the anniversary letter, with drawings from doodles.js
  *
  * Previewing: ?date=2028-06-01 shows the garden on another day, ?hour=21 at another time.
  */
+import { CRAYON_FILTER } from './doodles.js';
 import { ageOn, createGarden, dateAtAge, paintRose } from './garden.js';
+import { renderLetter } from './letter.js';
 import { drawRoots, isSealed, parseDay } from './roots.js';
 import { KeyError, forgetKey, keyFor, loadSeed, openGarden, openSeed, recallKey, rememberKey } from './store.js';
 import * as say from './words.js';
@@ -37,6 +40,7 @@ let roots = null;    // roots.js: what's drawn below ground
 let memories = [];
 let decor = []; // decorations switched on: shared, saved in the garden
 let ideas = []; // the idea board
+let letterText = null; // the anniversary letter, if there is one
 
 function take(data) {
   memories = data.memories;
@@ -138,6 +142,7 @@ async function enter(key, secrets) {
   setupHero();
   setupDialogs();
   loadMemories();
+  loadLetter();
 
   // grow from a seed to today, the first time per visit
   const age = ageOn(now(), since);
@@ -405,6 +410,15 @@ function setupDialogs() {
     });
   }
 
+  document.body.insertAdjacentHTML('beforeend', CRAYON_FILTER);
+  $('#letterPill').addEventListener('click', openLetter);
+  $('#rollUp').addEventListener('click', closeLetter);
+  $('#ticker').addEventListener('click', () => $('#ticker').classList.remove('on'));
+  $('#letter').addEventListener('cancel', (e) => {
+    e.preventDefault(); // Esc rolls it up too
+    closeLetter();
+  });
+
   $('#infoBtn').addEventListener('click', () => {
     updateInfo();
     $('#info').showModal();
@@ -583,7 +597,59 @@ function updateInfo() {
   const left = expires ? daysBetween(today, expires) : null;
   note.textContent = !expires ? '' : left < 0 ? say.keyExpired(gardeners[0]) : left <= 30 ? say.keyExpiresSoon(expires, left) : say.keyUntil(expires);
   note.classList.toggle('warn', left != null && left <= 30);
-  $('#infoBtn').classList.toggle('attention', left != null && left <= 30);
+  $('#infoBtn').classList.toggle('attention', (left != null && left <= 30) || letterUnread());
+}
+
+/* ---------- the anniversary letter ---------- */
+
+const letterUnread = () => Boolean(letterText) && store.get('roos-letter-read') !== '1';
+
+async function loadLetter() {
+  try {
+    letterText = await garden.letter();
+  } catch (err) {
+    console.warn(err);
+  }
+  $('#letterPill').hidden = !letterText;
+  $('#letterDot').hidden = !letterUnread();
+  updateInfo();
+}
+
+function openLetter() {
+  const dialog = $('#letter');
+  const body = $('#letterBody');
+  renderLetter(body, letterText, ticker);
+  $('#info').close();
+  dialog.showModal();
+  body.scrollTop = 0;
+  // unroll down to the bottom of the screen (or to the end of the letter, if it's short)
+  const room = innerHeight - 150;
+  dialog.style.setProperty('--h', `${Math.max(240, Math.min(room, body.scrollHeight))}px`);
+  void dialog.offsetHeight; // lay it out rolled up first, so it has something to unroll from
+  dialog.classList.add('open');
+  store.set('roos-letter-read', '1');
+  $('#letterDot').hidden = true;
+  updateInfo();
+}
+
+function closeLetter() {
+  const dialog = $('#letter');
+  if (!dialog.open) return;
+  dialog.classList.remove('open'); // rolls back up
+  $('#ticker').classList.remove('on');
+  setTimeout(() => dialog.close(), reduceMotion ? 0 : 1000);
+}
+
+let tickerTimer = 0;
+function ticker(message) {
+  const t = $('#ticker');
+  $('#tickerText').textContent = Array.from({ length: 3 }, () => message).join('   ✦   ');
+  t.classList.remove('on');
+  void t.offsetWidth; // restart the crawl
+  t.classList.add('on');
+  navigator.vibrate?.(40);
+  clearTimeout(tickerTimer);
+  tickerTimer = setTimeout(() => t.classList.remove('on'), 9800);
 }
 
 /* ---------- planting ---------- */

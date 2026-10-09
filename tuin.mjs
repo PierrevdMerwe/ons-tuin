@@ -7,6 +7,7 @@
  *   node tuin.mjs list           everything planted so far, with ids
  *   node tuin.mjs remove <id>…   dig something up (the only way to remove anything)
  *   node tuin.mjs export [dir]   decrypt everything into a folder, as a keepsake/backup
+ *   node tuin.mjs letter [file]  seal the anniversary letter (private/letter.txt) into garden/
  *
  * TUIN_PASSWORD=… and TUIN_TOKEN=… skip the prompts (but end up in your shell history).
  */
@@ -16,11 +17,13 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { ITERATIONS, deriveKey, fromBase64, normalize, open, openJSON, sealJSON, toBase64 } from './crypto.js';
+import { ITERATIONS, deriveKey, fromBase64, normalize, open, openJSON, seal, sealJSON, toBase64 } from './crypto.js';
+import { hasDoodle } from './doodles.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SEED = path.join(here, 'garden', 'seed.json');
 const MANIFEST = path.join(here, 'garden', 'memories.bin');
+const LETTER = path.join(here, 'garden', 'letter.bin');
 
 const { values: opts, positionals } = parseArgs({
   allowPositionals: true,
@@ -34,7 +37,7 @@ const { values: opts, positionals } = parseArgs({
 
 const rel = (p) => path.relative(process.cwd(), p) || '.';
 const [command, ...args] = positionals;
-const commands = { setup, list, remove, export: exportAll };
+const commands = { setup, list, remove, export: exportAll, letter };
 
 (commands[command] ?? help)(...args).catch((err) => {
   console.error(`\n✗ ${err.message}`);
@@ -46,7 +49,8 @@ async function help() {
   node tuin.mjs setup          pick the password and give the site its GitHub key
   node tuin.mjs list           everything planted so far
   node tuin.mjs remove <id>…   dig something up
-  node tuin.mjs export [dir]   decrypt everything into a folder`);
+  node tuin.mjs export [dir]   decrypt everything into a folder
+  node tuin.mjs letter [file]  seal the anniversary letter (private/letter.txt)`);
 }
 
 /* ---------- setup ---------- */
@@ -192,6 +196,24 @@ async function exportAll(dir = path.join(here, 'private', 'export')) {
   await writeFile(path.join(dir, 'ons-roos.md'), `${lines.join('\n')}\n`);
   console.log(`✓ ${ms.length} memories → ${rel(dir)}`);
   if (dir.startsWith(path.join(here, 'private'))) console.log('  (private/ is gitignored, so this stays on your laptop)');
+}
+
+/* ---------- the anniversary letter ---------- */
+
+// The readable letter stays in private/ (gitignored); only the sealed copy is published.
+async function letter(file = path.join(here, 'private', 'letter.txt')) {
+  const text = (await readFile(file, 'utf8').catch(() => {
+    throw new Error(`couldn't read ${rel(file)}. Write the letter there first`);
+  })).trim();
+  if (!text) throw new Error(`${rel(file)} is empty`);
+  const unknown = [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((n) => !hasDoodle(n));
+  if (unknown.length) throw new Error(`no drawing called ${unknown.map((n) => `{${n}}`).join(', ')} (see doodles.js)`);
+  const seed = await readJSON(SEED);
+  if (!seed) throw new Error(`no ${rel(SEED)} yet. Run "node tuin.mjs setup" first`);
+  const { key } = await unlock(seed);
+  await writeFile(LETTER, await seal(key, new TextEncoder().encode(text)));
+  console.log(`✓ ${rel(LETTER)} (${text.split(/\s+/).length} words, sealed)`);
+  console.log('Commit and push garden/letter.bin. The readable copy stays in private/.');
 }
 
 /* ---------- passwords and prompts ---------- */
