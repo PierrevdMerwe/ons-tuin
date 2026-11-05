@@ -8,7 +8,7 @@
 
 const INK = '#3a3346';
 const SKIN = '#f6c9a2';
-const HAIR_HIM = '#6b4423';
+const HAIR_HIM = '#ab8a52'; // dirty blonde, a touch darker than hers
 const HAIR_HER = '#bb9a5e'; // dirty blonde
 const RED = '#e2343c';
 const PINK = '#f48fb1';
@@ -54,7 +54,7 @@ const heart = (x, y, s, c = RED) => colour(shape(heartD(x, y, s)), c, [x - s * 1
 
 function face(x, y, lashes) {
   return `<circle cx="${x - 4.5}" cy="${y - 1}" r="1.7" fill="${INK}"/><circle cx="${x + 4.5}" cy="${y - 1}" r="1.7" fill="${INK}"/>`
-    + (lashes ? ln(`M${x - 6.2} ${y - 3.2} l-2 -1.4 M${x + 6.2} ${y - 3.2} l2 -1.4`, INK, 1.2) : '')
+    + (lashes ? ln(`M${x - 6} ${y - 1} l-2.6 -0.5 M${x + 6} ${y - 1} l2.6 -0.5`, INK, 1.1) : '') // at eye level: any higher and they read as cross eyebrows
     + `<circle cx="${x - 8}" cy="${y + 3.5}" r="2.3" fill="${PINK}" opacity="0.8"/><circle cx="${x + 8}" cy="${y + 3.5}" r="2.3" fill="${PINK}" opacity="0.8"/>`
     + ln(`M${x - 4.5} ${y + 3.5} Q${x} ${y + 8.5} ${x + 4.5} ${y + 3.5}`, INK, 1.8);
 }

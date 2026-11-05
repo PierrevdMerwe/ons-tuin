@@ -135,7 +135,7 @@ createServer(async (req, res) => {
     res.writeHead(err.code === 'ENOENT' ? 404 : 500, { 'content-type': 'text/plain' });
     res.end(err.code === 'ENOENT' ? 'not found' : String(err.message));
   }
-}).listen(port, () => {
+}).listen(port, 'localhost', () => { // this laptop only: anyone who can reach it can write to garden/
   console.log(`the garden is at http://localhost:${port}`);
   console.log('anything planted here is written into garden/ on this laptop\n');
 });

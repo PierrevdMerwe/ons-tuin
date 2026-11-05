@@ -9,7 +9,7 @@
  *
  * Previewing: ?date=2028-06-01 shows the garden on another day, ?hour=21 at another time.
  */
-import { CRAYON_FILTER } from './doodles.js';
+import { CRAYON_FILTER, inkHeart } from './doodles.js';
 import { ageOn, createGarden, dateAtAge, paintRose } from './garden.js';
 import { renderLetter } from './letter.js';
 import { drawRoots, isSealed, parseDay } from './roots.js';
@@ -332,7 +332,12 @@ function showMemory() {
     }
     if (m.caption) cap.append(text('p', 'caption', m.caption));
   } else if (m.kind === 'note') {
-    fig.append(text('div', 'paper', m.text));
+    const paper = text('div', 'paper', '');
+    m.text.split('<3').forEach((part, i) => { // <3 is a little heart, as in the letter
+      if (i) paper.insertAdjacentHTML('beforeend', inkHeart);
+      paper.append(part);
+    });
+    fig.append(paper);
     if (m.opens) cap.append(text('p', 'meta', say.fromCapsule(parseDay(m.date))));
   } else if (m.kind === 'song') {
     const embed = embedFor(m.song.url);

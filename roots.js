@@ -307,7 +307,7 @@ export function drawRoots(container, memories, { since, today, onOpen, picture, 
       b.setAttribute('aria-label', m.caption || `foto, ${say.formatDate(e.date)}`);
       lazy.observe(b);
     } else if (e.shape === 'note') {
-      face.textContent = m.text.length > 90 ? `${m.text.slice(0, 90).trimEnd()}…` : m.text;
+      face.textContent = (m.text.length > 90 ? `${m.text.slice(0, 90).trimEnd()}…` : m.text).replaceAll('<3', '♥');
       b.setAttribute('aria-label', `briefie, ${say.formatDate(e.date)}`);
       if (m.opens) cap.textContent = say.fromCapsule(e.date);
     } else if (e.shape === 'song') {
