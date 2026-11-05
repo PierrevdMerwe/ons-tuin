@@ -288,10 +288,13 @@ addEventListener('scroll', () => {
 
 const viewable = () => memories.filter((m) => !isSealed(m, startOfDay(now()))).sort((a, b) => a.date.localeCompare(b.date) || (a.planted || '').localeCompare(b.planted || ''));
 let viewing = -1;
+let viewingPhoto = 0; // which photo of a post with several
+const photoCount = (m) => m?.photos?.length ?? 1;
 
 function openMemory(m) {
   if (isSealed(m, startOfDay(now()))) return toast(say.capsuleWait(daysBetween(now(), parseDay(m.opens))));
   viewing = viewable().findIndex((x) => x.id === m.id);
+  viewingPhoto = 0;
   showMemory();
   const v = $('#viewer');
   if (!v.open) v.showModal();
@@ -302,8 +305,8 @@ function showMemory() {
   const m = list[viewing];
   const body = $('#viewerBody');
   body.replaceChildren();
-  $('#prevBtn').disabled = viewing <= 0;
-  $('#nextBtn').disabled = viewing >= list.length - 1;
+  $('#prevBtn').disabled = viewing <= 0 && viewingPhoto <= 0;
+  $('#nextBtn').disabled = viewing >= list.length - 1 && viewingPhoto >= photoCount(m) - 1;
   if (!m) return;
 
   const fig = document.createElement('figure');
@@ -316,9 +319,17 @@ function showMemory() {
     const img = document.createElement('img');
     img.className = 'photo';
     img.alt = m.caption || '';
-    garden.picture(m.thumb).then((url) => { if (!img.src) img.src = url; }).catch(() => {});
-    garden.picture(m.photo).then((url) => (img.src = url)).catch(() => {});
+    const p = m.photos[viewingPhoto];
+    garden.picture(p.thumb).then((url) => { if (!img.src) img.src = url; }).catch(() => {});
+    garden.picture(p.photo).then((url) => (img.src = url)).catch(() => {});
     fig.append(img);
+    if (m.photos.length > 1) { // dots for which photo of the post this is
+      const dots = document.createElement('p');
+      dots.className = 'dots';
+      dots.setAttribute('aria-label', `foto ${viewingPhoto + 1} van ${m.photos.length}`);
+      m.photos.forEach((_, i) => dots.append(text('i', i === viewingPhoto ? 'on' : '', '')));
+      fig.append(dots);
+    }
     if (m.caption) cap.append(text('p', 'caption', m.caption));
   } else if (m.kind === 'note') {
     fig.append(text('div', 'paper', m.text));
@@ -388,11 +399,18 @@ function youtubeId(u) {
   return null;
 }
 
+// Next or previous: through a post's photos first, then on to the next memory.
 function step(dir) {
   const list = viewable();
-  const next = viewing + dir;
-  if (next < 0 || next >= list.length) return;
-  viewing = next;
+  const photo = viewingPhoto + dir;
+  if (photo >= 0 && photo < photoCount(list[viewing])) {
+    viewingPhoto = photo;
+  } else {
+    const next = viewing + dir;
+    if (next < 0 || next >= list.length) return;
+    viewing = next;
+    viewingPhoto = dir < 0 ? photoCount(list[next]) - 1 : 0;
+  }
   showMemory();
 }
 
@@ -655,7 +673,8 @@ function ticker(message) {
 /* ---------- planting ---------- */
 
 let tab = store.get('roos-tab') || 'photo';
-let picked = []; // [{ file, full, thumb, w, h, date, caption }]
+const MAX_PHOTOS = 5; // per memory
+let picked = []; // the photos for this post: [{ full, thumb, w, h, date, preview }]
 let planting = false;
 
 // "geplant deur" buttons, remembering who used this phone last
@@ -693,6 +712,7 @@ function setupPlanting() {
       $('#noteOpens').value = isoDay(d); // the next anniversary
     }
   });
+  $('#photoDate').addEventListener('input', (e) => e.target.classList.remove('invalid'));
   $('#songUrl').addEventListener('change', fillSong);
   $('#plantForm').addEventListener('submit', plant);
   $('#plant').addEventListener('close', () => {
@@ -715,6 +735,7 @@ function openPlanting() {
     $(id).max = today;
     if (!$(id).value) $(id).value = today;
   }
+  $('#photoDate').max = today;
   $('#noteOpens').min = isoDay(new Date(now().getTime() + DAY));
   selectTab(tab);
   $('#plant').showModal();
@@ -724,7 +745,9 @@ function resetPlanting() {
   for (const p of picked) URL.revokeObjectURL(p.preview);
   picked = [];
   $('#picked').replaceChildren();
-  for (const id of ['#noteText', '#noteDate', '#noteOpens', '#songUrl', '#songTitle', '#songArtist', '#songWhy', '#songDate']) $(id).value = '';
+  $('#photoFields').hidden = true;
+  $('#photoDate').classList.remove('invalid');
+  for (const id of ['#photoCaption', '#photoDate', '#noteText', '#noteDate', '#noteOpens', '#songUrl', '#songTitle', '#songArtist', '#songWhy', '#songDate']) $(id).value = '';
   $('#capsule').checked = false;
   $('#opensField').hidden = true;
   $('#plantMsg').textContent = '';
@@ -732,44 +755,42 @@ function resetPlanting() {
 }
 
 async function addPhotos(files) {
+  const room = MAX_PHOTOS - picked.length;
+  $('#plantMsg').textContent = files.length > room ? say.tooManyPhotos(MAX_PHOTOS) : '';
   const list = $('#picked');
-  for (const file of files.slice(0, 40 - picked.length)) {
+  for (const file of files.slice(0, room)) {
     const li = document.createElement('li');
-    li.append(text('span', 'busy', `${file.name}…`));
+    li.append(text('span', 'busy', '…'));
     list.append(li);
     try {
       const p = await preparePhoto(file);
       p.preview = URL.createObjectURL(p.thumb);
       picked.push(p);
-      li.replaceChildren(...photoRow(p));
+      li.replaceChildren(...photoTile(p, li));
+      $('#photoFields').hidden = false;
+      if (p.date && !$('#photoDate').value) $('#photoDate').value = p.date; // from the photo itself
     } catch (err) {
       console.warn(err);
-      li.replaceChildren(text('span', 'busy', say.photoUnreadable(file.name)));
-      setTimeout(() => li.remove(), 5000);
+      li.remove();
+      $('#plantMsg').textContent = say.photoUnreadable(file.name);
     }
   }
 }
 
-function photoRow(p) {
+function photoTile(p, li) {
   const img = document.createElement('img');
   img.src = p.preview;
   img.alt = '';
-  const fields = document.createElement('div');
-  fields.className = 'fields';
-  const caption = document.createElement('input');
-  caption.placeholder = 'wat gebeur hier?';
-  caption.addEventListener('input', () => (p.caption = caption.value.trim()));
-  const date = document.createElement('input');
-  date.type = 'date';
-  date.max = isoDay(now());
-  date.value = p.date || '';
-  date.addEventListener('input', () => {
-    p.date = date.value;
-    date.classList.remove('invalid');
+  const out = text('button', 'unpick', '×');
+  out.type = 'button';
+  out.setAttribute('aria-label', 'haal hierdie foto uit');
+  out.addEventListener('click', () => {
+    picked = picked.filter((x) => x !== p);
+    URL.revokeObjectURL(p.preview);
+    li.remove();
+    if (!picked.length) $('#photoFields').hidden = true;
   });
-  p.dateInput = date;
-  fields.append(caption, date);
-  return [img, fields];
+  return [img, out];
 }
 
 // Shrink to a sensible size (and a small one for the roots). Browsers turn photos
@@ -883,24 +904,25 @@ async function plant(event) {
 
   if (tab === 'photo') {
     if (!picked.length) return (msg.textContent = "kies eers 'n foto of twee");
-    const bad = picked.find((p) => checkDate(p.dateInput));
-    if (bad) {
-      bad.dateInput.classList.add('invalid');
-      bad.dateInput.focus();
-      return (msg.textContent = checkDate(bad.dateInput));
+    const dateInput = $('#photoDate');
+    const problem = checkDate(dateInput);
+    if (problem) {
+      dateInput.classList.add('invalid');
+      dateInput.focus();
+      return (msg.textContent = problem);
     }
-    for (const p of picked) {
-      const id = newId(p.date);
-      const memory = { id, kind: 'photo', date: p.date, by, planted, caption: p.caption || undefined, photo: `garden/photos/${id}.bin`, thumb: `garden/thumbs/${id}.bin`, w: p.w, h: p.h };
-      items.push({
-        memory,
-        files: [
-          { path: memory.photo, bytes: new Uint8Array(await p.full.arrayBuffer()) },
-          { path: memory.thumb, bytes: new Uint8Array(await p.thumb.arrayBuffer()) },
-        ],
-        blobs: { [memory.photo]: p.full, [memory.thumb]: p.thumb },
-      });
+    const date = dateInput.value;
+    const id = newId(date);
+    const photos = picked.map((p, i) => ({ photo: `garden/photos/${id}-${i}.bin`, thumb: `garden/thumbs/${id}-${i}.bin`, w: p.w, h: p.h }));
+    const files = [];
+    const blobs = {};
+    for (const [i, p] of picked.entries()) {
+      const { photo, thumb } = photos[i];
+      files.push({ path: photo, bytes: new Uint8Array(await p.full.arrayBuffer()) }, { path: thumb, bytes: new Uint8Array(await p.thumb.arrayBuffer()) });
+      blobs[photo] = p.full;
+      blobs[thumb] = p.thumb;
     }
+    items.push({ memory: { id, kind: 'photo', date, by, planted, caption: $('#photoCaption').value.trim() || undefined, photos }, files, blobs });
   } else if (tab === 'note') {
     const words = $('#noteText').value.trim();
     if (!words) return (msg.textContent = say.emptyNote);
@@ -924,7 +946,7 @@ async function plant(event) {
   store.set('roos-by', by);
   const go = $('#plantGo');
   go.disabled = true;
-  const what = { photo: `${items.length} photo${items.length === 1 ? '' : 's'}`, note: 'a note', song: 'a song' }[tab];
+  const what = { photo: `${picked.length} photo${picked.length === 1 ? '' : 's'}`, note: 'a note', song: 'a song' }[tab];
   try {
     take(await garden.plant(items, `plant ${what}${by ? ` (${by})` : ''}`, (p) => (msg.textContent = say.plantProgress(p))));
     for (const item of items) for (const [path, blob] of Object.entries(item.blobs || {})) garden.cache(path, blob);

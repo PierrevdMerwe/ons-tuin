@@ -8,11 +8,14 @@
  *   node tuin.mjs remove <id>…   dig something up (the only way to remove anything)
  *   node tuin.mjs export [dir]   decrypt everything into a folder, as a keepsake/backup
  *   node tuin.mjs letter [file]  seal the anniversary letter (private/letter.txt) into garden/
+ *   node tuin.mjs plant          plant the memories in private/memories.json, with their photos
  *
  * TUIN_PASSWORD=… and TUIN_TOKEN=… skip the prompts (but end up in your shell history).
  */
 import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -37,7 +40,7 @@ const { values: opts, positionals } = parseArgs({
 
 const rel = (p) => path.relative(process.cwd(), p) || '.';
 const [command, ...args] = positionals;
-const commands = { setup, list, remove, export: exportAll, letter };
+const commands = { setup, list, remove, export: exportAll, letter, plant };
 
 (commands[command] ?? help)(...args).catch((err) => {
   console.error(`\n✗ ${err.message}`);
@@ -50,7 +53,8 @@ async function help() {
   node tuin.mjs list           everything planted so far
   node tuin.mjs remove <id>…   dig something up
   node tuin.mjs export [dir]   decrypt everything into a folder
-  node tuin.mjs letter [file]  seal the anniversary letter (private/letter.txt)`);
+  node tuin.mjs letter [file]  seal the anniversary letter (private/letter.txt)
+  node tuin.mjs plant          plant the memories in private/memories.json, with their photos`);
 }
 
 /* ---------- setup ---------- */
@@ -169,7 +173,7 @@ async function remove(...ids) {
   console.log('  git add -A garden && git commit -m "dig something up" && git push');
 }
 
-const filesOf = (m) => [m.photo, m.thumb, m.audio].filter(Boolean);
+const filesOf = (m) => (m.photos || []).flatMap((p) => [p.photo, p.thumb]);
 
 async function exportAll(dir = path.join(here, 'private', 'export')) {
   const { key, garden } = await loadGarden();
@@ -179,14 +183,16 @@ async function exportAll(dir = path.join(here, 'private', 'export')) {
   const safe = (s) => s.replace(/[/\\:*?"<>|]+/g, '').slice(0, 60).trim();
   for (const m of ms) {
     if (m.kind === 'photo') {
-      const sealed = await readFile(path.join(here, m.photo)).catch(() => null);
-      if (!sealed) {
-        console.log(`  (missing ${m.photo}, run git pull?)`);
-        continue;
+      for (const [i, p] of m.photos.entries()) {
+        const sealed = await readFile(path.join(here, p.photo)).catch(() => null);
+        if (!sealed) {
+          console.log(`  (missing ${p.photo}, run git pull?)`);
+          continue;
+        }
+        const name = `${m.date} ${safe(m.caption || m.id)}${m.photos.length > 1 ? ` ${i + 1}` : ''}.jpg`;
+        await writeFile(path.join(dir, name), await open(key, sealed));
+        lines.push(`- ${m.date}: foto "${name}"${m.by ? ` (${m.by})` : ''}`);
       }
-      const name = `${m.date} ${safe(m.caption || m.id)}.jpg`;
-      await writeFile(path.join(dir, name), await open(key, sealed));
-      lines.push(`- ${m.date}: foto "${name}"${m.by ? ` (${m.by})` : ''}`);
     } else if (m.kind === 'note') {
       lines.push(`- ${m.date}: briefie${m.by ? ` van ${m.by}` : ''}${m.opens ? ` (gaan oop op ${m.opens})` : ''}`, '', ...m.text.split('\n').map((l) => `  > ${l}`), '');
     } else if (m.kind === 'song') {
@@ -196,6 +202,75 @@ async function exportAll(dir = path.join(here, 'private', 'export')) {
   await writeFile(path.join(dir, 'ons-roos.md'), `${lines.join('\n')}\n`);
   console.log(`✓ ${ms.length} memories → ${rel(dir)}`);
   if (dir.startsWith(path.join(here, 'private'))) console.log('  (private/ is gitignored, so this stays on your laptop)');
+}
+
+/* ---------- planting from the laptop ---------- */
+
+const PHOTO = /\.(jpe?g|png|webp|heic|heif)$/i;
+const MAX_PHOTOS = 5;
+
+/*
+ * private/memories.json is a list of { id, date, caption } or { id, date, song, why }, or
+ * { id, date, text } for a short note. Photos for an entry go in private/photos/<id>/ (up
+ * to 5, in filename order). Without photos, a caption shows as a little card until they
+ * arrive. Safe to run again and again: it only changes what's different. Do a git pull first.
+ */
+async function plant(file = path.join(here, 'private', 'memories.json')) {
+  const list = await readJSON(file);
+  if (!list) throw new Error(`no ${rel(file)} yet`);
+  const { key, garden } = await loadGarden();
+  const tmp = await mkdtemp(path.join(tmpdir(), 'tuin-'));
+  let changed = 0;
+  try {
+    for (const entry of list) {
+      const old = garden.memories.find((m) => m.id === entry.id);
+      const memory = { id: entry.id, date: entry.date, by: entry.by ?? 'Pierre', planted: old?.planted ?? new Date().toISOString(), ...(await contentsOf(entry, key, tmp)) };
+      if (old && JSON.stringify(old) === JSON.stringify(memory)) continue;
+      changed++;
+      if (old) {
+        const keep = new Set(filesOf(memory));
+        for (const f of filesOf(old)) if (!keep.has(f)) await rm(path.join(here, f), { force: true });
+        garden.memories[garden.memories.indexOf(old)] = memory;
+      } else {
+        garden.memories.push(memory);
+      }
+      console.log(`  ${old ? 'updated' : 'planted'}  ${memory.date}  ${memory.kind.padEnd(5)} ${memory.photos ? `${memory.photos.length} photo(s)  ` : ''}${describe(memory)}`);
+    }
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+  if (!changed) return console.log('nothing new to plant');
+  await writeFile(MANIFEST, await sealJSON(key, garden));
+  console.log(`\n✓ ${changed} changed, ${garden.memories.length} in the garden. Commit and push garden/ to make it live.`);
+}
+
+async function contentsOf(entry, key, tmp) {
+  if (entry.song) return { kind: 'song', song: entry.song, text: entry.why };
+  if (entry.text) return { kind: 'note', text: entry.text };
+  const dir = path.join(here, 'private', 'photos', entry.id);
+  const names = (await readdir(dir).catch(() => [])).filter((f) => PHOTO.test(f)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  if (names.length > MAX_PHOTOS) console.log(`  (${entry.id}: using the first ${MAX_PHOTOS} of ${names.length} photos)`);
+  if (!names.length) return { kind: 'note', text: entry.caption };
+  const photos = [];
+  for (const name of names.slice(0, MAX_PHOTOS)) photos.push(await sealPhoto(path.join(dir, name), entry.id, key, tmp));
+  return { kind: 'photo', caption: entry.caption, photos };
+}
+
+// Named after the photo's contents, so an unchanged photo is never redone.
+async function sealPhoto(src, id, key, tmp) {
+  const hash = createHash('sha256').update(await readFile(src)).digest('hex').slice(0, 10);
+  const made = { photo: `garden/photos/${id}-${hash}.bin`, thumb: `garden/thumbs/${id}-${hash}.bin` };
+  for (const [kind, max, quality] of [['photo', 1800, 84], ['thumb', 480, 80]]) {
+    const dest = path.join(here, made[kind]);
+    if (await readFile(dest).catch(() => null)) continue;
+    const jpg = path.join(tmp, `${hash}-${kind}.jpg`);
+    const info = execFileSync('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', src], { encoding: 'utf8' });
+    const side = Math.max(...[...info.matchAll(/pixel(?:Width|Height): (\d+)/g)].map((m) => Number(m[1])));
+    execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', String(quality), ...(side > max ? ['-Z', String(max)] : []), src, '--out', jpg], { stdio: 'ignore' });
+    await mkdir(path.dirname(dest), { recursive: true });
+    await writeFile(dest, await seal(key, await readFile(jpg)));
+  }
+  return made;
 }
 
 /* ---------- the anniversary letter ---------- */

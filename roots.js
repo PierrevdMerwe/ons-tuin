@@ -32,6 +32,15 @@ const HALF_H = { photo: 47, note: 48, song: 44, seed: 34 };
 export const isSealed = (m, today) => m.kind === 'note' && m.opens && parseDay(m.opens) > today;
 const shape = (m, today) => (isSealed(m, today) ? 'seed' : m.kind);
 
+// Roughly how much room a memory's caption takes up below it (about 22 letters a line).
+function labelHeight(m, kind) {
+  const words = kind === 'photo' ? m.caption
+    : kind === 'song' ? [m.song.title, m.song.artist].filter(Boolean).join(' · ')
+    : kind === 'seed' ? 'gaan oop op 8 Nov 2027'
+    : m.opens ? "uit 'n saadjie wat op 8 Nov 2027 geplant is" : '';
+  return (words ? Math.ceil(words.length / 22) * 20 : 0) + 20;
+}
+
 /* ---------- where everything goes ---------- */
 
 export function layout(memories, { since, today, width }) {
@@ -44,14 +53,14 @@ export function layout(memories, { since, today, width }) {
     if (date > today) break;
     events.push({ type: 'stratum', n, date });
   }
-  events.sort((a, b) => a.date - b.date || (a.type === 'stratum' ? -1 : 1) || (a.m.planted || '').localeCompare(b.m.planted || ''));
+  events.sort((a, b) => a.date - b.date || (a.type === b.type ? 0 : a.type === 'stratum' ? -1 : 1) || (a.m?.planted || '').localeCompare(b.m?.planted || ''));
 
   let cursor = 110;
   let prev = null;
   let memBottom = 0;
   let stratBottom = 0;
   let side = -1;
-  const lastY = { [-1]: -1e9, 1: -1e9 };
+  const lastBottom = { [-1]: -1e9, 1: -1e9 };
   for (const e of events) {
     const gapDays = prev ? Math.max(0, (e.date - prev) / DAY) : 0;
     const gap = Math.min(190, 30 * Math.log2(1 + gapDays / 3));
@@ -61,13 +70,14 @@ export function layout(memories, { since, today, width }) {
     } else {
       const r = rng(hash(e.m.id));
       e.shape = shape(e.m, today);
-      e.y = Math.max(cursor + 86 + gap, stratBottom + 70, lastY[side] + 184);
+      const above = HALF_H[e.shape] + (e.m.photos?.length > 1 ? 16 : 0); // a stack of photos reaches higher
+      e.y = Math.max(cursor + 86 + gap, stratBottom + above + 24, lastBottom[side] + above + 18);
       e.side = side;
       e.size = HALF_W[e.shape];
       e.x = cx + side * clamp(half * (0.64 + 0.28 * r()), 70, half - e.size);
       e.seed = r() * 1e9;
-      lastY[side] = e.y;
-      memBottom = e.y + HALF_H[e.shape] + 52;
+      lastBottom[side] = e.y + HALF_H[e.shape] + 10 + labelHeight(e.m, e.shape);
+      memBottom = Math.max(memBottom, lastBottom[side]);
       side = -side;
     }
     cursor = e.y;
@@ -245,10 +255,11 @@ export function drawRoots(container, memories, { since, today, onOpen, picture, 
     for (const entry of entries) {
       if (!entry.isIntersecting) continue;
       lazy.unobserve(entry.target);
-      const img = entry.target.querySelector('img[data-src]');
-      img.onload = () => img.classList.add('loaded');
-      picture(img.dataset.src).then((url) => (img.src = url)).catch(() => entry.target.classList.add('broken'));
-      delete img.dataset.src;
+      for (const img of entry.target.querySelectorAll('img[data-src]')) {
+        img.onload = () => img.classList.add('loaded');
+        picture(img.dataset.src).then((url) => (img.src = url)).catch(() => entry.target.classList.add('broken'));
+        delete img.dataset.src;
+      }
     }
   }, { rootMargin: '900px 0px' });
 
@@ -271,11 +282,27 @@ export function drawRoots(container, memories, { since, today, onOpen, picture, 
     const when = document.createElement('time');
     when.textContent = say.shortDate(e.date);
 
+    const extras = []; // the rest of a post's photos, and how many there are
     if (e.shape === 'photo') {
-      const img = document.createElement('img');
-      img.alt = '';
-      img.dataset.src = m.thumb;
-      face.append(img);
+      const thumb = (p) => {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.dataset.src = p.thumb;
+        return img;
+      };
+      face.append(thumb(m.photos[0]));
+      m.photos.slice(1, 3).forEach((p, i) => {
+        const peek = document.createElement('span');
+        peek.className = `peek p${i + 1}`;
+        peek.append(thumb(p));
+        extras.push(peek);
+      });
+      if (m.photos.length > 1) {
+        const count = document.createElement('span');
+        count.className = 'count';
+        count.textContent = m.photos.length;
+        extras.push(count);
+      }
       cap.textContent = m.caption || '';
       b.setAttribute('aria-label', m.caption || `foto, ${say.formatDate(e.date)}`);
       lazy.observe(b);
@@ -301,7 +328,7 @@ export function drawRoots(container, memories, { since, today, onOpen, picture, 
       b.setAttribute('aria-label', say.capsuleLabel(parseDay(m.opens)));
     }
     label.append(cap, when);
-    b.append(face, label);
+    b.append(...extras.filter((x) => x.className.startsWith('peek')), face, ...extras.filter((x) => x.className === 'count'), label);
     b.addEventListener('click', () => onOpen(m, b));
     container.append(b);
     buttons.set(m.id, b);

@@ -9,7 +9,7 @@
 const INK = '#3a3346';
 const SKIN = '#f6c9a2';
 const HAIR_HIM = '#6b4423';
-const HAIR_HER = '#7a4a26';
+const HAIR_HER = '#bb9a5e'; // dirty blonde
 const RED = '#e2343c';
 const PINK = '#f48fb1';
 const BLUE = '#3d7ed8';
@@ -23,6 +23,7 @@ const BROWN = '#9a5d2e';
 const PURPLE = '#9c64d8';
 const GRAY = '#8e959c';
 const PAPER = '#fffdf6';
+const SHORTS = '#566a92';
 
 let uid = 0;
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -85,12 +86,12 @@ function herHead(hx, hy) {
 const hand = ([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="${SKIN}" stroke="${INK}" stroke-width="1.4"/>`;
 
 // (x, y) is between his feet; he's about 76 tall. left/right: where his hands end up.
-function him(x, y, { shirt = BLUE, left = [x - 22, y - 33], right = [x + 22, y - 33] } = {}) {
+function him(x, y, { shirt = BLUE, left = [x - 22, y - 33], right = [x + 22, y - 33], legs = true } = {}) {
   return [
-    ln(`M${x - 5} ${y - 25} L${x - 7} ${y - 3}`, INK, 2.4),
-    ln(`M${x + 5} ${y - 25} L${x + 7} ${y - 3}`, INK, 2.4),
-    `<ellipse cx="${x - 9}" cy="${y - 2}" rx="5" ry="2.6" fill="${INK}"/><ellipse cx="${x + 9}" cy="${y - 2}" rx="5" ry="2.6" fill="${INK}"/>`,
-    colour(shape(`M${x - 7} ${y - 30} L${x + 7} ${y - 30} L${x + 8} ${y - 19} L${x - 8} ${y - 19} Z`), '#566a92', [x - 9, y - 31, 18, 13], { gap: 2.4 }),
+    legs ? ln(`M${x - 5} ${y - 25} L${x - 7} ${y - 3}`, INK, 2.4) : '',
+    legs ? ln(`M${x + 5} ${y - 25} L${x + 7} ${y - 3}`, INK, 2.4) : '',
+    legs ? `<ellipse cx="${x - 9}" cy="${y - 2}" rx="5" ry="2.6" fill="${INK}"/><ellipse cx="${x + 9}" cy="${y - 2}" rx="5" ry="2.6" fill="${INK}"/>` : '',
+    legs ? colour(shape(`M${x - 7} ${y - 30} L${x + 7} ${y - 30} L${x + 8} ${y - 19} L${x - 8} ${y - 19} Z`), SHORTS, [x - 9, y - 31, 18, 13], { gap: 2.4 }) : '',
     colour(shape(`M${x - 11} ${y - 47} Q${x} ${y - 52} ${x + 11} ${y - 47} L${x + 10} ${y - 27} L${x - 10} ${y - 27} Z`), shirt, [x - 12, y - 52, 24, 26]),
     ln(`M${x - 10} ${y - 44} L${left[0]} ${left[1]}`, INK, 2.4),
     ln(`M${x + 10} ${y - 44} L${right[0]} ${right[1]}`, INK, 2.4),
@@ -102,19 +103,33 @@ function him(x, y, { shirt = BLUE, left = [x - 22, y - 33], right = [x + 22, y -
 }
 
 // (x, y) is between her feet; she's about 76 tall, with her bow.
-function her(x, y, { dress = PINK, left = [x - 21, y - 33], right = [x + 21, y - 33] } = {}) {
+// left: null leaves that arm out, for when it's drawn behind someone else.
+function her(x, y, { dress = PINK, left = [x - 21, y - 33], right = [x + 21, y - 33], legs = true } = {}) {
   return [
-    ln(`M${x - 4} ${y - 22} L${x - 5} ${y - 3}`, INK, 2.4),
-    ln(`M${x + 4} ${y - 22} L${x + 5} ${y - 3}`, INK, 2.4),
-    `<ellipse cx="${x - 7}" cy="${y - 2}" rx="4.6" ry="2.5" fill="${RED}" stroke="${INK}" stroke-width="1.2"/><ellipse cx="${x + 7}" cy="${y - 2}" rx="4.6" ry="2.5" fill="${RED}" stroke="${INK}" stroke-width="1.2"/>`,
-    ln(`M${x - 7} ${y - 46} L${left[0]} ${left[1]}`, INK, 2.4),
+    legs ? ln(`M${x - 4} ${y - 22} L${x - 5} ${y - 3}`, INK, 2.4) : '',
+    legs ? ln(`M${x + 4} ${y - 22} L${x + 5} ${y - 3}`, INK, 2.4) : '',
+    legs ? `<ellipse cx="${x - 7}" cy="${y - 2}" rx="4.6" ry="2.5" fill="${RED}" stroke="${INK}" stroke-width="1.2"/><ellipse cx="${x + 7}" cy="${y - 2}" rx="4.6" ry="2.5" fill="${RED}" stroke="${INK}" stroke-width="1.2"/>` : '',
+    left ? ln(`M${x - 7} ${y - 46} L${left[0]} ${left[1]}`, INK, 2.4) + hand(left) : '',
     ln(`M${x + 7} ${y - 46} L${right[0]} ${right[1]}`, INK, 2.4),
-    hand(left),
     hand(right),
     colour(shape(`M${x - 6} ${y - 50} L${x + 6} ${y - 50} L${x + 18} ${y - 20} Q${x} ${y - 16} ${x - 18} ${y - 20} Z`), dress, [x - 19, y - 51, 38, 35]),
     ln(`M${x} ${y - 52} L${x} ${y - 49}`, INK, 2.4),
     herHead(x, y - 62),
   ].join('');
+}
+
+// Sitting on the front of a couch, seen from the front: lap on the seat (seat y), shins
+// hanging down in front of it to the floor. Drawn after the couch, so nothing goes into it.
+function hisLap(x, seat, floor) {
+  return ln(`M${x - 6} ${seat + 8} L${x - 7} ${floor - 2}`, INK, 2.4) + ln(`M${x + 6} ${seat + 8} L${x + 7} ${floor - 2}`, INK, 2.4)
+    + `<ellipse cx="${x - 9}" cy="${floor}" rx="5" ry="2.6" fill="${INK}"/><ellipse cx="${x + 9}" cy="${floor}" rx="5" ry="2.6" fill="${INK}"/>`
+    + colour(shape(`M${x - 11} ${seat - 5} L${x + 11} ${seat - 5} L${x + 12} ${seat + 10} L${x - 12} ${seat + 10} Z`), SHORTS, [x - 13, seat - 6, 26, 17], { gap: 2.4 });
+}
+
+function herLap(x, seat, floor) {
+  return ln(`M${x - 5} ${seat + 10} L${x - 6} ${floor - 2}`, INK, 2.4) + ln(`M${x + 5} ${seat + 10} L${x + 6} ${floor - 2}`, INK, 2.4)
+    + `<ellipse cx="${x - 8}" cy="${floor}" rx="4.6" ry="2.5" fill="${RED}" stroke="${INK}" stroke-width="1.2"/><ellipse cx="${x + 8}" cy="${floor}" rx="4.6" ry="2.5" fill="${RED}" stroke="${INK}" stroke-width="1.2"/>`
+    + colour(shape(`M${x - 13} ${seat - 6} L${x + 13} ${seat - 6} Q${x + 19} ${seat + 5} ${x + 17} ${seat + 12} Q${x} ${seat + 16} ${x - 17} ${seat + 12} Q${x - 19} ${seat + 5} ${x - 13} ${seat - 6} Z`), PINK, [x - 19, seat - 7, 38, 23]);
 }
 
 /* ---------- bits and pieces ---------- */
@@ -240,8 +255,8 @@ const scenes = {
     solid(shape('M172 82 q5 6 4 15 l-8 0 q-1 -9 4 -15 Z'), PAPER, INK, 1),
     ln('M170 98 l2 5 l2 -5', ORANGE, 2),
     colour(shape('M14 86 Q14 78 24 78 L124 78 Q134 78 134 86 L134 122 L14 122 Z'), ORANGE, [14, 78, 120, 44]),
-    her(98, 146, { left: [80, 106], right: [118, 124] }),
-    him(46, 146, { left: [28, 124], right: [70, 106] }),
+    her(98, 146, { left: [80, 106], right: [117, 113], legs: false }),
+    him(46, 146, { left: [29, 113], right: [70, 106], legs: false }),
     colour(shape('M66 104 L84 104 L81 124 L69 124 Z'), PAPER, [66, 104, 18, 20], { gap: 2.2 }),
     ln('M71 104 L72 124 M77 104 L76.5 124', RED, 2.2),
     ...[[68, 101, 3.4], [74, 99, 3.6], [80, 101, 3.2], [71, 96, 3], [78, 95, 3]].map(([x, y, r]) => solid(circle(x, y, r), '#fff3c8', INK, 1.1)),
@@ -249,7 +264,9 @@ const scenes = {
     colour(shape('M2 100 Q2 94 10 94 Q16 94 16 100 L16 142 L2 142 Z'), '#e07a2e', [2, 94, 14, 48], { gap: 2.6 }),
     colour(shape('M132 100 Q132 94 140 94 Q146 94 146 100 L146 142 L132 142 Z'), '#e07a2e', [132, 94, 14, 48], { gap: 2.6 }),
     ln('M10 142 L10 150 M138 142 L138 150', BROWN, 3),
-    colour(`<ellipse cx="80" cy="158" rx="70" ry="6"/>`, PURPLE, [10, 152, 140, 12], { gap: 2.4, outline: null }),
+    colour(`<ellipse cx="74" cy="158" rx="70" ry="7"/>`, PURPLE, [4, 151, 140, 14], { gap: 2.4, outline: null }),
+    hisLap(46, 118, 156),
+    herLap(98, 118, 156),
   ],
 
   // drukkies, games and tiktok streaks
@@ -267,8 +284,9 @@ const scenes = {
     solid(shape('M161 77 L181 77 L181 113 L161 113 Z'), PAPER, PAPER, 0.5),
     colour(shape('M171 108 q-9 -2 -6 -12 q2 4 4 3 q-3 -9 5 -15 q0 7 5 10 q4 6 -1 11 q-2 3 -7 3 Z'), ORANGE, [163, 84, 16, 25], { gap: 2, outline: RED, width: 1.4 }),
     colour(shape('M171 107 q-4 -2 -2 -7 q2 2 3 0 q2 4 1 7 Z'), YELLOW, [168, 99, 6, 9], { gap: 1.6, outline: null }),
-    her(118, 160, { left: [88, 112] }),
-    him(84, 160, { right: [119, 110] }),
+    ln('M111 114 L86 120', INK, 2.4), // her arm, round behind him
+    him(84, 160, { right: [119, 112] }), // his arm goes round behind her, so she's drawn over it
+    her(118, 160, { left: null }),
   ],
 
   // a year on: the two of us and our first rose (the wide one, at the very end)

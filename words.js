@@ -51,6 +51,7 @@ export const keyExpired = (gardener) => `Die tuin se sleutel het verval, so niks
 export const keyExpiresSoon = (d, n) => `die tuin se sleutel verval op ${shortDate(d)} (${inDays(n)}): hernu dit met node tuin.mjs setup`;
 export const keyUntil = (d) => `die tuin se sleutel hou tot ${shortDate(d)}`;
 export const plantFailed = (msg) => `Kon nie plant nie: ${msg}`;
+export const tooManyPhotos = (n) => `tot ${n} foto's per herinnering`;
 export const photoUnreadable = (name) => `Kan nie "${name}" oopmaak nie. Probeer dit as 'n JPG.`;
 export const notSetUp = 'Die tuin is nog nie geplant nie. Hardloop eers: node tuin.mjs setup';
 export const needsHttps = 'Dit werk net oor https of localhost.';

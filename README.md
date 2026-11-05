@@ -45,7 +45,7 @@ It asks for the day it all started, the password (twice) and the token. It check
 
 ## 3. Plant the first year
 
-Open the site, unlock it, tap the green button, and choose photos. The date fills in from the photo when the phone keeps it; otherwise pick it. Each photo is shrunk, encrypted in the browser, and committed. Pages takes a minute or two to redeploy, but the phone that planted sees it straight away.
+Open the site, unlock it, tap the green button, and choose up to 5 photos for one memory, with one caption and date. The date fills in from the photo when the phone keeps it; otherwise pick it. Each photo is shrunk, encrypted in the browser, and committed. Pages takes a minute or two to redeploy, but the phone that planted sees it straight away.
 
 ## Looking after it
 
@@ -59,6 +59,7 @@ Open the site, unlock it, tap the green button, and choose photos. The date fill
 | Wording | `words.js`, plus the ⓘ text in `index.html` |
 | Names | `data-gardeners`, `data-for` on `<body>` in `index.html` (the start date is set by `tuin.mjs setup`) |
 | Rose colours per year | `PALETTES` in `garden.js` |
+| Bulk planting | list memories in `private/memories.json`, drop photos in `private/photos/<id>/` (up to 5 each, any format including HEIC), then `git pull`, `node tuin.mjs plant`, and commit and push `garden/`. An entry without photos shows as a small card until they arrive. Safe to re-run |
 | The letter | edit `private/letter.txt` (gitignored), run `node tuin.mjs letter`, then commit and push `garden/letter.bin`. In the text: `# greeting`, `~ sign-off`, `{vis}` for a drawing from `doodles.js`, `[word|ticker text]`, and `<3` for a heart |
 | A new decoration | draw it in `garden.js` (next to `drawFountain`, then add it to `drawBackdrop`) and list it in `DECOR` in `words.js` |
 

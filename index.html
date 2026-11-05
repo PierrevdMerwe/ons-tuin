@@ -16,10 +16,10 @@
   <!-- VERSION: bump it here and in the script below whenever the code changes, so phones
        fetch the new files straight away (GitHub Pages otherwise lets them keep the old
        ones for up to 10 minutes, even after a refresh). -->
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
   <script>
     (() => {
-      const v = 6;
+      const v = 7;
       const map = document.createElement('script');
       map.type = 'importmap';
       map.textContent = JSON.stringify({
@@ -179,9 +179,13 @@
         <label class="pick">
           <input type="file" id="photoInput" accept="image/*" multiple>
           <span class="pick-title">kies foto's</span>
-          <span class="pick-sub">elkeen kry sy eie wortel, op die dag waarop dit geneem is</span>
+          <span class="pick-sub">tot 5 foto's per herinnering, saam op een wortel</span>
         </label>
         <ol class="picked" id="picked"></ol>
+        <div class="tab" id="photoFields" hidden>
+          <label class="field"><span>wat gebeur hier?</span><input id="photoCaption" autocomplete="off"></label>
+          <label class="field"><span>wanneer?</span><input type="date" id="photoDate"></label>
+        </div>
       </section>
 
       <section class="tab" data-tab="note" role="tabpanel" hidden>
