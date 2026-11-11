@@ -606,6 +606,262 @@ export function paintRose(g, stage, year = 1, variant = 0) {
   }
 }
 
+/* ---------- the animals: Peter the penguin, and our dog ---------- */
+
+// All drawn standing on (0, 0), about 40 units tall, facing right.
+
+const FUR_LINE = 'rgba(40, 28, 22, 0.5)';
+const ell = (g, x, y, rx, ry, rot = 0) => g.ellipse(x, y, rx, ry, rot, 0, TAU);
+
+function part(g, fill, shape, line = FUR_LINE) {
+  g.beginPath();
+  shape();
+  g.fillStyle = fill;
+  g.fill();
+  if (line) {
+    g.strokeStyle = line;
+    g.lineWidth = 0.7;
+    g.stroke();
+  }
+}
+
+function eye(g, x, y, r = 1.05) {
+  part(g, '#1c1612', () => g.arc(x, y, r, 0, TAU), null);
+  part(g, 'rgba(255, 255, 255, 0.85)', () => g.arc(x + r * 0.35, y - r * 0.35, r * 0.35, 0, TAU), null);
+}
+
+// An African penguin, like the ones at Boulders Beach: black and white, a thin black
+// band over the chest, a white stripe curving round the eye, and a pink patch above it.
+export function paintPenguin(g, t = 0) {
+  const flap = Math.max(0, Math.sin(t * 1.7)) ** 8 * 0.6; // now and then a little flap
+  const black = '#202127';
+  const white = '#f8f6f1';
+  part(g, '#34353b', () => ell(g, -4.5, -1, 4.6, 1.9));
+  part(g, '#34353b', () => ell(g, 5, -1, 4.6, 1.9));
+  g.save();
+  g.translate(-9, -29);
+  g.rotate(0.35 + flap);
+  part(g, black, () => ell(g, 0, 9, 2.8, 9.5));
+  g.restore();
+  part(g, black, () => { // head and body in one
+    g.moveTo(-10, -3);
+    g.bezierCurveTo(-14, -14, -13, -28, -8, -34);
+    g.bezierCurveTo(-8, -42, -4, -46, 1.5, -46);
+    g.bezierCurveTo(7, -46, 10, -42, 9.5, -36);
+    g.bezierCurveTo(12, -30, 13, -16, 10, -4);
+    g.bezierCurveTo(8, -1, -8, -1, -10, -3);
+  });
+  part(g, white, () => { // the white front
+    g.moveTo(-6, -6);
+    g.bezierCurveTo(-9, -14, -8, -25, -2, -30);
+    g.quadraticCurveTo(2, -32.5, 6.4, -31);
+    g.bezierCurveTo(10.4, -26, 10.8, -14, 7, -6);
+    g.bezierCurveTo(4, -3.4, -3, -3.4, -6, -6);
+  }, null);
+  part(g, white, () => { // the stripe round the eye, down to the throat
+    g.moveTo(-0.5, -42);
+    g.quadraticCurveTo(5, -45.6, 9, -40.6);
+    g.quadraticCurveTo(6, -41, 4.8, -38);
+    g.quadraticCurveTo(3.6, -34, 1.6, -31);
+    g.lineTo(-0.6, -31.6);
+    g.quadraticCurveTo(2.2, -35, 2.6, -38.5);
+    g.quadraticCurveTo(2.4, -41, -0.5, -42);
+  }, null);
+  g.beginPath(); // the band over the chest
+  g.moveTo(-5.4, -9.5);
+  g.bezierCurveTo(-7.4, -20, -5, -27.2, 2, -27.6);
+  g.bezierCurveTo(8, -27.2, 9.8, -20, 8.4, -9.5);
+  g.strokeStyle = black;
+  g.lineWidth = 1.3;
+  g.lineCap = 'round';
+  g.stroke();
+  for (const [x, y] of [[2.5, -20], [5.2, -17.5], [0.4, -15.5]]) part(g, black, () => g.arc(x, y, 0.65, 0, TAU), null);
+  part(g, '#ec8f9a', () => ell(g, 6.6, -40.6, 1.8, 0.9, -0.2), null);
+  eye(g, 6.9, -38.1, 1.05);
+  part(g, '#17171b', () => {
+    g.moveTo(9.4, -38.2);
+    g.quadraticCurveTo(13, -37.6, 15.2, -36.3);
+    g.quadraticCurveTo(12.6, -35.2, 9.4, -35);
+    g.closePath();
+  });
+  g.save();
+  g.translate(10.4, -28);
+  g.rotate(-0.35 - flap);
+  part(g, black, () => ell(g, 0, 9, 2.6, 9));
+  g.restore();
+}
+
+export const BREEDS = ['worshond', 'corgi', 'jackrussell'];
+
+function leg(g, x, top, w, fill) {
+  part(g, fill, () => {
+    if (g.roundRect) g.roundRect(x - w / 2, top, w, -top + 0.6, w / 2);
+    else g.rect(x - w / 2, top, w, -top + 0.6);
+  });
+}
+
+function collar(g, x0, y0, x1, y1) {
+  g.beginPath();
+  g.moveTo(x0, y0);
+  g.lineTo(x1, y1);
+  g.strokeStyle = '#c4161c';
+  g.lineWidth = 1.7;
+  g.lineCap = 'round';
+  g.stroke();
+  part(g, '#e6b84a', () => g.arc((x0 + x1) / 2 + 0.4, (y0 + y1) / 2 + 1.6, 1.15, 0, TAU), 'rgba(120, 80, 20, 0.6)');
+}
+
+const shade = (g, y0, y1, light, dark) => {
+  const grad = g.createLinearGradient(0, y0, 0, y1);
+  grad.addColorStop(0, light);
+  grad.addColorStop(1, dark);
+  return grad;
+};
+
+function worshond(g, wag) {
+  const coat = '#a4532a', dark = '#7a3a1c', light = '#c8743c';
+  leg(g, 9.5, -6.5, 3, dark);
+  leg(g, -12, -6.5, 3, dark);
+  g.save();
+  g.translate(-17, -12);
+  g.rotate(-0.45 + wag);
+  part(g, coat, () => {
+    g.moveTo(0, -1.6);
+    g.quadraticCurveTo(-6, -3, -11.5, -1.2);
+    g.quadraticCurveTo(-6, 0.4, 0, 1.8);
+    g.closePath();
+  });
+  g.restore();
+  part(g, shade(g, -16.5, -5, light, dark), () => { // long and low
+    g.moveTo(-18, -11);
+    g.bezierCurveTo(-18, -17, -10, -16.5, 0, -16);
+    g.bezierCurveTo(10, -16.5, 16, -16.5, 17.5, -12);
+    g.bezierCurveTo(18.5, -7, 14, -5, 8, -5);
+    g.lineTo(-12, -5.2);
+    g.bezierCurveTo(-17, -5.5, -18, -8, -18, -11);
+  });
+  leg(g, 12.5, -6.5, 3.2, coat);
+  leg(g, -9, -6.5, 3.2, coat);
+  part(g, coat, () => {
+    g.moveTo(12, -15.5);
+    g.quadraticCurveTo(15, -21, 19.5, -23);
+    g.lineTo(22, -17);
+    g.quadraticCurveTo(18, -13, 16.5, -9.5);
+    g.closePath();
+  });
+  part(g, coat, () => ell(g, 21.5, -20.5, 6, 4.8, -0.15));
+  part(g, coat, () => ell(g, 27.5, -18.6, 5.4, 2.8, 0.1));
+  part(g, '#1c1612', () => g.arc(32.4, -19, 1.3, 0, TAU), null);
+  eye(g, 23, -22);
+  part(g, dark, () => ell(g, 18.4, -17.6, 2.6, 5.6, 0.2));
+  collar(g, 14.2, -19.4, 17.6, -14.2);
+}
+
+function corgi(g, wag) {
+  const coat = '#d98a34', dark = '#a8631f', light = '#efab56', white = '#f7f2e8';
+  leg(g, 9, -7.5, 3.6, dark);
+  leg(g, -10, -7.5, 3.6, dark);
+  part(g, shade(g, -19, -5, light, dark), () => ell(g, 0, -12, 15.5, 7.5));
+  part(g, white, () => ell(g, 8.5, -8.6, 7, 4), null);
+  g.save(); // no tail to speak of: the fluffy bottom wiggles instead
+  g.translate(-13.6, -12.5);
+  g.rotate(wag * 0.4);
+  part(g, light, () => ell(g, -0.6, 0, 2.6, 3.4), null);
+  g.restore();
+  leg(g, 12, -7.5, 3.8, coat);
+  part(g, white, () => ell(g, 12, -1.6, 1.9, 1.7), null);
+  leg(g, -6.5, -7.5, 3.8, coat);
+  part(g, white, () => ell(g, -6.5, -1.6, 1.9, 1.7), null);
+  part(g, dark, () => { // the far ear
+    g.moveTo(15.4, -25);
+    g.lineTo(14.2, -34);
+    g.lineTo(20, -27.4);
+    g.closePath();
+  });
+  part(g, coat, () => {
+    g.moveTo(11.5, -15);
+    g.quadraticCurveTo(14, -21, 17, -24);
+    g.lineTo(21, -18);
+    g.quadraticCurveTo(17, -12, 15, -8.5);
+    g.closePath();
+  });
+  part(g, coat, () => ell(g, 19.5, -21.5, 6.6, 5.6));
+  part(g, white, () => ell(g, 21.6, -21.2, 1.6, 4.2, -0.2), null);
+  part(g, white, () => ell(g, 24.8, -18.8, 4.6, 3));
+  part(g, '#1c1612', () => g.arc(29.2, -19.5, 1.3, 0, TAU), null);
+  eye(g, 21.6, -23.4);
+  part(g, coat, () => { // the near ear, big and upright
+    g.moveTo(18.5, -26.2);
+    g.lineTo(20, -35.2);
+    g.lineTo(24.4, -26.6);
+    g.closePath();
+  });
+  part(g, '#e8a4a0', () => {
+    g.moveTo(19.8, -27);
+    g.lineTo(20.4, -32.6);
+    g.lineTo(23, -27.2);
+    g.closePath();
+  }, null);
+  collar(g, 13.4, -20.6, 17, -15.6);
+}
+
+function jackRussell(g, wag) {
+  const coat = '#f6f2ea', dark = '#d4ccbb', tan = '#a8713d';
+  leg(g, 8, -10.5, 3, dark);
+  leg(g, -9.5, -10.5, 3, dark);
+  g.save();
+  g.translate(-12.5, -17);
+  g.rotate(-1.15 + wag * 0.6);
+  part(g, coat, () => {
+    if (g.roundRect) g.roundRect(-8.5, -1.3, 9, 2.6, 1.3);
+    else g.rect(-8.5, -1.3, 9, 2.6);
+  });
+  g.restore();
+  const body = () => ell(g, 0, -15, 14, 6.6);
+  part(g, shade(g, -21, -8, '#fffdf8', dark), body);
+  g.save();
+  g.beginPath();
+  body();
+  g.clip();
+  part(g, tan, () => ell(g, -5, -19.5, 7, 4), null);
+  g.restore();
+  leg(g, 10.5, -10.5, 3.2, coat);
+  leg(g, -6.5, -10.5, 3.2, coat);
+  part(g, coat, () => {
+    g.moveTo(9.5, -18);
+    g.quadraticCurveTo(12.5, -24, 16, -27);
+    g.lineTo(20, -21);
+    g.quadraticCurveTo(15.5, -15, 13.5, -11);
+    g.closePath();
+  });
+  const head = () => ell(g, 18, -25, 6, 5.1);
+  part(g, coat, head);
+  g.save();
+  g.beginPath();
+  head();
+  g.clip();
+  part(g, tan, () => ell(g, 16.4, -27.6, 5.4, 3.8, 0.15), null);
+  g.restore();
+  part(g, coat, () => ell(g, 23.4, -23.2, 4.8, 2.8, 0.08));
+  part(g, '#1c1612', () => g.arc(27.8, -23.8, 1.25, 0, TAU), null);
+  eye(g, 19.8, -26.2);
+  part(g, tan, () => { // folded ear
+    g.moveTo(14.4, -28.4);
+    g.lineTo(18.8, -31.4);
+    g.lineTo(18.4, -26.4);
+    g.closePath();
+  });
+  collar(g, 12, -22.8, 15.4, -17.8);
+}
+
+// Our dog, of whichever breed we pick. t moves the tail.
+export function paintDog(g, breed, t = 0) {
+  const wag = Math.sin(t * 9) * 0.45;
+  if (breed === 'corgi') corgi(g, wag);
+  else if (breed === 'jackrussell') jackRussell(g, wag);
+  else worshond(g, wag);
+}
+
 /* ---------- the scene: sky by time of day ---------- */
 
 const SKY = [ // hour, top, horizon
@@ -658,6 +914,8 @@ export function createGarden(canvas, { onFrame } = {}) {
   let lastT = 0;
   let hits = [];
   let decor = new Set();          // which decorations are switched on
+  let dog = { breed: 'worshond', name: '' };
+  let petHits = [];
   let grass = [];
   let bushBox = { w: HEAD * 2, h: STEM };
   const petals = [];
@@ -1392,6 +1650,28 @@ export function createGarden(canvas, { onFrame } = {}) {
     });
   }
 
+  // Peter, and our dog: in front of the bush, looking towards it
+  function drawPets(t) {
+    petHits = [];
+    const u = unit() * 1.05;
+    const tt = reduceMotion ? 0 : t;
+    if (decor.has('pikkewyn')) {
+      const x = W * 0.37;
+      const sway = reduceMotion ? 0 : Math.sin(t * 1.3) * 0.045; // a little waddle
+      g.setTransform(dpr * u, 0, 0, dpr * u, x * dpr, (ground + 1) * dpr);
+      g.rotate(sway);
+      paintPenguin(g, tt);
+      petHits.push({ pet: 'penguin', x, top: ground - 46 * u, half: 14 * u });
+    }
+    if (decor.has('hond')) {
+      const x = W * 0.68, k = u * 1.2;
+      g.setTransform(-dpr * k, 0, 0, dpr * k, x * dpr, (ground + 2) * dpr); // mirrored: facing the rose
+      paintDog(g, dog.breed, tt);
+      petHits.push({ pet: 'dog', x, top: ground - 37 * k, half: 34 * k });
+    }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
   // everything that stands behind the bush
   function drawBackdrop(t, night) {
     const u = unit();
@@ -1478,6 +1758,7 @@ export function createGarden(canvas, { onFrame } = {}) {
     drawBackdrop(t, night);
     drawBush(age, t);
     drawGrass(t);
+    drawPets(t); // in front of the grass, or the dachshund disappears in it
     if (night > 0.02) { // dim the garden with the light
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.fillStyle = `rgba(14, 20, 40, ${0.38 * night})`;
@@ -1543,6 +1824,16 @@ export function createGarden(canvas, { onFrame } = {}) {
     setDecor(list) {
       decor = new Set(list);
       if (!running) draw(performance.now());
+    },
+    // our dog: { breed: one of BREEDS, name }
+    setDog(d) {
+      dog = { breed: BREEDS.includes(d?.breed) ? d.breed : 'worshond', name: d?.name || '' };
+      if (!running) draw(performance.now());
+    },
+    // Peter or the dog under a point on the canvas (css px), if either is there
+    petAt(x, y) {
+      const hit = petHits.find((p) => Math.abs(p.x - x) < p.half && y > p.top - 8 && y < ground + 6);
+      return hit && { pet: hit.pet, x: hit.x, top: hit.top };
     },
     setHour(h) {
       hourOverride = h;

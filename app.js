@@ -10,7 +10,7 @@
  * Previewing: ?date=2028-06-01 shows the garden on another day, ?hour=21 at another time.
  */
 import { CRAYON_FILTER, inkHeart } from './doodles.js';
-import { ageOn, createGarden, dateAtAge, paintRose } from './garden.js';
+import { BREEDS, ageOn, createGarden, dateAtAge, paintDog, paintRose } from './garden.js';
 import { renderLetter } from './letter.js';
 import { drawRoots, isSealed, parseDay } from './roots.js';
 import { KeyError, forgetKey, keyFor, loadSeed, openGarden, openSeed, recallKey, rememberKey } from './store.js';
@@ -40,13 +40,16 @@ let roots = null;    // roots.js: what's drawn below ground
 let memories = [];
 let decor = []; // decorations switched on: shared, saved in the garden
 let ideas = []; // the idea board
+let dog = { breed: 'worshond', name: '' }; // shared too
 let letterText = null; // the anniversary letter, if there is one
 
 function take(data) {
   memories = data.memories;
   decor = data.decor;
   ideas = data.ideas;
+  dog = data.dog;
   sky?.setDecor(decor);
+  sky?.setDog(dog);
 }
 
 /* ---------- toast ---------- */
@@ -192,22 +195,47 @@ function setupSky() {
     setupHero();
   });
 
-  // touch a rose to see which year it's from
+  // touch a rose to see which year it's from; Peter says his name; the dog opens his sheet
   let tipTimer = 0;
-  $('#sky').addEventListener('click', (e) => {
-    if (replaying) return sky.skip();
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    const rose = sky.roseAt(x, y);
-    const tip = $('#roseTip');
-    if (!rose) return (tip.hidden = true);
-    const bloomsOn = dateAtAge(rose.bloomAt, since);
-    tip.textContent = say.roseTip(rose.year, rose.open, daysBetween(now(), bloomsOn));
-    tip.style.left = `${clamp(x, 90, r.width - 90)}px`;
+  const tip = $('#roseTip');
+  const showTip = (words, x, y, ms = 2600) => {
+    tip.textContent = words;
+    tip.style.left = `${clamp(x, 90, $('#sky').clientWidth - 90)}px`;
     tip.style.top = `${y}px`;
     tip.hidden = false;
     clearTimeout(tipTimer);
-    tipTimer = setTimeout(() => (tip.hidden = true), 2600);
+    if (ms) tipTimer = setTimeout(() => (tip.hidden = true), ms);
+  };
+  const at = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  };
+  const petName = (pet) => (pet.pet === 'penguin' ? say.PENGUIN : dog.name || say.dogNameless);
+
+  $('#sky').addEventListener('click', (e) => {
+    if (replaying) return sky.skip();
+    const [x, y] = at(e);
+    const pet = sky.petAt(x, y);
+    if (pet?.pet === 'dog') return openDog();
+    if (pet) return showTip(petName(pet), pet.x, pet.top);
+    const rose = sky.roseAt(x, y);
+    if (!rose) return (tip.hidden = true);
+    showTip(say.roseTip(rose.year, rose.open, daysBetween(now(), dateAtAge(rose.bloomAt, since))), x, y);
+  });
+
+  // with a mouse, their names show on hover
+  let hovering = null;
+  $('#sky').addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const pet = sky.petAt(...at(e));
+    e.currentTarget.style.cursor = pet ? 'pointer' : '';
+    if (pet && pet.pet !== hovering) showTip(petName(pet), pet.x, pet.top, 0);
+    if (!pet && hovering) tip.hidden = true;
+    hovering = pet?.pet ?? null;
+  });
+  $('#sky').addEventListener('pointerleave', () => {
+    if (hovering) tip.hidden = true;
+    hovering = null;
   });
 }
 
@@ -477,6 +505,7 @@ function setupDialogs() {
   setupPlanting();
   setupDecor();
   setupIdeas();
+  setupDog();
 }
 
 /* ---------- decorating: switch things on and off, seen by both of you ---------- */
@@ -524,6 +553,71 @@ async function saveDecor() {
     decor = before;
     sky.setDecor(decor);
     toast(err instanceof KeyError ? say.keyExpired(gardeners[0]) : say.saveFailed(err.message), 6000);
+  }
+}
+
+/* ---------- our dog: his breed and his name ---------- */
+
+let draftDog = null;
+
+function setupDog() {
+  const list = $('#breeds');
+  for (const breed of BREEDS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'breed';
+    b.dataset.breed = breed;
+    b.setAttribute('role', 'radio');
+    const c = document.createElement('canvas');
+    c.width = 168;
+    c.height = 96;
+    const g = c.getContext('2d');
+    g.setTransform(2.3, 0, 0, 2.3, 74, 88); // a little portrait of each
+    paintDog(g, breed);
+    b.append(c, text('span', 'name', say.BREED_NAMES[breed]));
+    b.addEventListener('click', () => {
+      draftDog.breed = breed;
+      sky.setDog(draftDog); // the dog in the garden changes straight away
+      paintBreeds();
+    });
+    list.append(b);
+  }
+  $('#dogForm').addEventListener('submit', saveDog);
+  $('#dogSheet').addEventListener('close', () => {
+    if (draftDog) sky.setDog(dog); // closed without saving
+    draftDog = null;
+  });
+}
+
+function paintBreeds() {
+  for (const b of document.querySelectorAll('.breed')) b.setAttribute('aria-checked', String(b.dataset.breed === draftDog.breed));
+}
+
+function openDog() {
+  draftDog = { ...dog };
+  $('#dogName').value = dog.name || '';
+  $('#dogMsg').textContent = '';
+  paintBreeds();
+  $('#dogSheet').showModal();
+}
+
+async function saveDog(event) {
+  event.preventDefault();
+  const wanted = { breed: draftDog.breed, name: $('#dogName').value.trim().slice(0, 24) };
+  if (wanted.breed === dog.breed && wanted.name === (dog.name || '')) return $('#dogSheet').close();
+  const go = $('#dogGo');
+  go.disabled = true;
+  $('#dogMsg').textContent = '…';
+  try {
+    take(await garden.change((g) => ({ ...g, dog: wanted }), `the dog: ${wanted.name || 'no name yet'} (${wanted.breed})`));
+    draftDog = null;
+    $('#dogSheet').close();
+    toast(say.dogSaved(wanted.name));
+  } catch (err) {
+    console.error(err);
+    $('#dogMsg').textContent = err instanceof KeyError ? say.keyExpired(gardeners[0]) : say.saveFailed(err.message);
+  } finally {
+    go.disabled = false;
   }
 }
 

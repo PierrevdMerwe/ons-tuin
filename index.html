@@ -16,10 +16,10 @@
   <!-- VERSION: bump it here and in the script below whenever the code changes, so phones
        fetch the new files straight away (GitHub Pages otherwise lets them keep the old
        ones for up to 10 minutes, even after a refresh). -->
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
   <script>
     (() => {
-      const v = 8;
+      const v = 9;
       const map = document.createElement('script');
       map.type = 'importmap';
       map.textContent = JSON.stringify({
@@ -142,6 +142,20 @@
       <p class="sheet-sub">wat jy hier aanskakel, sien ons albei</p>
       <div class="decor-list" id="decorList"></div>
     </div>
+  </dialog>
+
+  <!-- our dog: low, so you can see him change as you pick -->
+  <dialog class="sheet sheet-low" id="dogSheet" aria-labelledby="dogTitle">
+    <form class="sheet-body" id="dogForm" novalidate>
+      <header class="sheet-head">
+        <h2 id="dogTitle">ons hond</h2>
+        <button class="close" type="button" data-close aria-label="maak toe">&times;</button>
+      </header>
+      <div class="breeds" id="breeds" role="radiogroup" aria-label="watter soort hond"></div>
+      <label class="field"><span>sy naam</span><input id="dogName" maxlength="24" autocomplete="off" autocapitalize="words" placeholder="gee hom 'n naam"></label>
+      <p class="msg" id="dogMsg" role="status" aria-live="polite"></p>
+      <button class="btn" type="submit" id="dogGo">stoor</button>
+    </form>
   </dialog>
 
   <!-- the idea board -->

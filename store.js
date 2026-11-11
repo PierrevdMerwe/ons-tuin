@@ -114,7 +114,7 @@ export function openGarden(key, secrets) {
   }
 
   // { memories, decor, ideas }, filling in what older files don't have yet
-  const withDefaults = (data) => ({ v: 1, ...data, memories: data?.memories ?? [], decor: data?.decor ?? [], ideas: data?.ideas ?? [] });
+  const withDefaults = (data) => ({ v: 1, ...data, memories: data?.memories ?? [], decor: data?.decor ?? [], ideas: data?.ideas ?? [], dog: data?.dog ?? { breed: 'worshond', name: '' } });
 
   async function upload(bytes) {
     const { sha } = await ghJSON('git/blobs', { method: 'POST', body: { content: toBase64(bytes), encoding: 'base64' } });

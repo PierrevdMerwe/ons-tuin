@@ -70,7 +70,13 @@ export const DECOR = [
   ['skoenlappers', 'skoenlappers', 'om die rose'],
   ['voels', 'voëltjies', 'wat soms verbyvlieg'],
   ['berg', 'Tafelberg', 'in die verte'],
+  ['pikkewyn', 'Peter', 'ons pikkewyn'],
+  ['hond', 'ons hond', 'raak aan hom vir sy naam en soort'],
 ];
+export const PENGUIN = 'Peter';
+export const BREED_NAMES = { worshond: 'worshond', corgi: 'corgi', jackrussell: 'jack russell' };
+export const dogNameless = "raak aan my vir 'n naam";
+export const dogSaved = (name) => (name ? `${name} sê dankie!` : 'gestoor');
 export const decorSaved = 'gestoor. ons albei sien dit nou.';
 export const saveFailed = (msg) => `Kon nie stoor nie: ${msg}`;
 export const ideasIntro = (builder) => `Wat moet ons nog in die tuin hê? Skryf dit hier, dan bou ${builder} dit in.`;
