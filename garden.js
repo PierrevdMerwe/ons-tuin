@@ -632,12 +632,14 @@ function eye(g, x, y, r = 1.05) {
 
 // An African penguin, like the ones at Boulders Beach: black and white, a thin black
 // band over the chest, a white stripe curving round the eye, and a pink patch above it.
-export function paintPenguin(g, t = 0) {
+// step: where he is in his waddle while walking (null when he's standing still).
+export function paintPenguin(g, t = 0, step = null) {
   const flap = Math.max(0, Math.sin(t * 1.7)) ** 8 * 0.6; // now and then a little flap
   const black = '#202127';
   const white = '#f8f6f1';
-  part(g, '#34353b', () => ell(g, -4.5, -1, 4.6, 1.9));
-  part(g, '#34353b', () => ell(g, 5, -1, 4.6, 1.9));
+  const lift = (s) => (step == null ? 0 : Math.max(0, Math.sin(step) * s) * 2);
+  part(g, '#34353b', () => ell(g, -4.5, -1 - lift(1), 4.6, 1.9));
+  part(g, '#34353b', () => ell(g, 5, -1 - lift(-1), 4.6, 1.9));
   g.save();
   g.translate(-9, -29);
   g.rotate(0.35 + flap);
@@ -693,11 +695,28 @@ export function paintPenguin(g, t = 0) {
 
 export const BREEDS = ['worshond', 'corgi', 'jackrussell'];
 
-function leg(g, x, top, w, fill) {
+// A leg hanging from its hip at (x, top), down to the ground, swung by `swing`.
+function leg(g, x, top, w, fill, swing = 0, sock = null) {
+  const h = -top + 0.6;
+  g.save();
+  g.translate(x, top);
+  g.rotate(swing);
   part(g, fill, () => {
-    if (g.roundRect) g.roundRect(x - w / 2, top, w, -top + 0.6, w / 2);
-    else g.rect(x - w / 2, top, w, -top + 0.6);
+    if (g.roundRect) g.roundRect(-w / 2, 0, w, h, w / 2);
+    else g.rect(-w / 2, 0, w, h);
   });
+  if (sock) part(g, sock, () => ell(g, 0, h - 1.6, w * 0.5, 1.7), null);
+  g.restore();
+}
+
+// Turn the head and neck about where the neck meets the body (nod > 0 is head down).
+function headAt(g, x, y, nod, paint) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(nod);
+  g.translate(-x, -y);
+  paint();
+  g.restore();
 }
 
 function collar(g, x0, y0, x1, y1) {
@@ -718,10 +737,16 @@ const shade = (g, y0, y1, light, dark) => {
   return grad;
 };
 
-function worshond(g, wag) {
+// legs: [far front, far back, near front, near back] swings for a trot (diagonal pairs together)
+const trot = (phase) => {
+  const a = Math.sin(phase) * 0.42;
+  return [-a, a, a, -a];
+};
+
+function worshond(g, { wag, legs, nod }) {
   const coat = '#a4532a', dark = '#7a3a1c', light = '#c8743c';
-  leg(g, 9.5, -6.5, 3, dark);
-  leg(g, -12, -6.5, 3, dark);
+  leg(g, 9.5, -6.5, 3, dark, legs[0]);
+  leg(g, -12, -6.5, 3, dark, legs[1]);
   g.save();
   g.translate(-17, -12);
   g.rotate(-0.45 + wag);
@@ -740,27 +765,29 @@ function worshond(g, wag) {
     g.lineTo(-12, -5.2);
     g.bezierCurveTo(-17, -5.5, -18, -8, -18, -11);
   });
-  leg(g, 12.5, -6.5, 3.2, coat);
-  leg(g, -9, -6.5, 3.2, coat);
-  part(g, coat, () => {
-    g.moveTo(12, -15.5);
-    g.quadraticCurveTo(15, -21, 19.5, -23);
-    g.lineTo(22, -17);
-    g.quadraticCurveTo(18, -13, 16.5, -9.5);
-    g.closePath();
+  leg(g, 12.5, -6.5, 3.2, coat, legs[2]);
+  leg(g, -9, -6.5, 3.2, coat, legs[3]);
+  headAt(g, 13, -12, nod, () => {
+    part(g, coat, () => {
+      g.moveTo(12, -15.5);
+      g.quadraticCurveTo(15, -21, 19.5, -23);
+      g.lineTo(22, -17);
+      g.quadraticCurveTo(18, -13, 16.5, -9.5);
+      g.closePath();
+    });
+    part(g, coat, () => ell(g, 21.5, -20.5, 6, 4.8, -0.15));
+    part(g, coat, () => ell(g, 27.5, -18.6, 5.4, 2.8, 0.1));
+    part(g, '#1c1612', () => g.arc(32.4, -19, 1.3, 0, TAU), null);
+    eye(g, 23, -22);
+    part(g, dark, () => ell(g, 18.4, -17.6, 2.6, 5.6, 0.2));
+    collar(g, 14.2, -19.4, 17.6, -14.2);
   });
-  part(g, coat, () => ell(g, 21.5, -20.5, 6, 4.8, -0.15));
-  part(g, coat, () => ell(g, 27.5, -18.6, 5.4, 2.8, 0.1));
-  part(g, '#1c1612', () => g.arc(32.4, -19, 1.3, 0, TAU), null);
-  eye(g, 23, -22);
-  part(g, dark, () => ell(g, 18.4, -17.6, 2.6, 5.6, 0.2));
-  collar(g, 14.2, -19.4, 17.6, -14.2);
 }
 
-function corgi(g, wag) {
+function corgi(g, { wag, legs, nod }) {
   const coat = '#d98a34', dark = '#a8631f', light = '#efab56', white = '#f7f2e8';
-  leg(g, 9, -7.5, 3.6, dark);
-  leg(g, -10, -7.5, 3.6, dark);
+  leg(g, 9, -7.5, 3.6, dark, legs[0]);
+  leg(g, -10, -7.5, 3.6, dark, legs[1]);
   part(g, shade(g, -19, -5, light, dark), () => ell(g, 0, -12, 15.5, 7.5));
   part(g, white, () => ell(g, 8.5, -8.6, 7, 4), null);
   g.save(); // no tail to speak of: the fluffy bottom wiggles instead
@@ -768,47 +795,47 @@ function corgi(g, wag) {
   g.rotate(wag * 0.4);
   part(g, light, () => ell(g, -0.6, 0, 2.6, 3.4), null);
   g.restore();
-  leg(g, 12, -7.5, 3.8, coat);
-  part(g, white, () => ell(g, 12, -1.6, 1.9, 1.7), null);
-  leg(g, -6.5, -7.5, 3.8, coat);
-  part(g, white, () => ell(g, -6.5, -1.6, 1.9, 1.7), null);
-  part(g, dark, () => { // the far ear
-    g.moveTo(15.4, -25);
-    g.lineTo(14.2, -34);
-    g.lineTo(20, -27.4);
-    g.closePath();
+  leg(g, 12, -7.5, 3.8, coat, legs[2], white);
+  leg(g, -6.5, -7.5, 3.8, coat, legs[3], white);
+  headAt(g, 13, -13, nod, () => {
+    part(g, dark, () => { // the far ear
+      g.moveTo(15.4, -25);
+      g.lineTo(14.2, -34);
+      g.lineTo(20, -27.4);
+      g.closePath();
+    });
+    part(g, coat, () => {
+      g.moveTo(11.5, -15);
+      g.quadraticCurveTo(14, -21, 17, -24);
+      g.lineTo(21, -18);
+      g.quadraticCurveTo(17, -12, 15, -8.5);
+      g.closePath();
+    });
+    part(g, coat, () => ell(g, 19.5, -21.5, 6.6, 5.6));
+    part(g, white, () => ell(g, 21.6, -21.2, 1.6, 4.2, -0.2), null);
+    part(g, white, () => ell(g, 24.8, -18.8, 4.6, 3));
+    part(g, '#1c1612', () => g.arc(29.2, -19.5, 1.3, 0, TAU), null);
+    eye(g, 21.6, -23.4);
+    part(g, coat, () => { // the near ear, big and upright
+      g.moveTo(18.5, -26.2);
+      g.lineTo(20, -35.2);
+      g.lineTo(24.4, -26.6);
+      g.closePath();
+    });
+    part(g, '#e8a4a0', () => {
+      g.moveTo(19.8, -27);
+      g.lineTo(20.4, -32.6);
+      g.lineTo(23, -27.2);
+      g.closePath();
+    }, null);
+    collar(g, 13.4, -20.6, 17, -15.6);
   });
-  part(g, coat, () => {
-    g.moveTo(11.5, -15);
-    g.quadraticCurveTo(14, -21, 17, -24);
-    g.lineTo(21, -18);
-    g.quadraticCurveTo(17, -12, 15, -8.5);
-    g.closePath();
-  });
-  part(g, coat, () => ell(g, 19.5, -21.5, 6.6, 5.6));
-  part(g, white, () => ell(g, 21.6, -21.2, 1.6, 4.2, -0.2), null);
-  part(g, white, () => ell(g, 24.8, -18.8, 4.6, 3));
-  part(g, '#1c1612', () => g.arc(29.2, -19.5, 1.3, 0, TAU), null);
-  eye(g, 21.6, -23.4);
-  part(g, coat, () => { // the near ear, big and upright
-    g.moveTo(18.5, -26.2);
-    g.lineTo(20, -35.2);
-    g.lineTo(24.4, -26.6);
-    g.closePath();
-  });
-  part(g, '#e8a4a0', () => {
-    g.moveTo(19.8, -27);
-    g.lineTo(20.4, -32.6);
-    g.lineTo(23, -27.2);
-    g.closePath();
-  }, null);
-  collar(g, 13.4, -20.6, 17, -15.6);
 }
 
-function jackRussell(g, wag) {
+function jackRussell(g, { wag, legs, nod }) {
   const coat = '#f6f2ea', dark = '#d4ccbb', tan = '#a8713d';
-  leg(g, 8, -10.5, 3, dark);
-  leg(g, -9.5, -10.5, 3, dark);
+  leg(g, 8, -10.5, 3, dark, legs[0]);
+  leg(g, -9.5, -10.5, 3, dark, legs[1]);
   g.save();
   g.translate(-12.5, -17);
   g.rotate(-1.15 + wag * 0.6);
@@ -825,41 +852,53 @@ function jackRussell(g, wag) {
   g.clip();
   part(g, tan, () => ell(g, -5, -19.5, 7, 4), null);
   g.restore();
-  leg(g, 10.5, -10.5, 3.2, coat);
-  leg(g, -6.5, -10.5, 3.2, coat);
-  part(g, coat, () => {
-    g.moveTo(9.5, -18);
-    g.quadraticCurveTo(12.5, -24, 16, -27);
-    g.lineTo(20, -21);
-    g.quadraticCurveTo(15.5, -15, 13.5, -11);
-    g.closePath();
+  leg(g, 10.5, -10.5, 3.2, coat, legs[2]);
+  leg(g, -6.5, -10.5, 3.2, coat, legs[3]);
+  headAt(g, 11, -16, nod, () => {
+    part(g, coat, () => {
+      g.moveTo(9.5, -18);
+      g.quadraticCurveTo(12.5, -24, 16, -27);
+      g.lineTo(20, -21);
+      g.quadraticCurveTo(15.5, -15, 13.5, -11);
+      g.closePath();
+    });
+    const head = () => ell(g, 18, -25, 6, 5.1);
+    part(g, coat, head);
+    g.save();
+    g.beginPath();
+    head();
+    g.clip();
+    part(g, tan, () => ell(g, 16.4, -27.6, 5.4, 3.8, 0.15), null);
+    g.restore();
+    part(g, coat, () => ell(g, 23.4, -23.2, 4.8, 2.8, 0.08));
+    part(g, '#1c1612', () => g.arc(27.8, -23.8, 1.25, 0, TAU), null);
+    eye(g, 19.8, -26.2);
+    part(g, tan, () => { // folded ear
+      g.moveTo(14.4, -28.4);
+      g.lineTo(18.8, -31.4);
+      g.lineTo(18.4, -26.4);
+      g.closePath();
+    });
+    collar(g, 12, -22.8, 15.4, -17.8);
   });
-  const head = () => ell(g, 18, -25, 6, 5.1);
-  part(g, coat, head);
-  g.save();
-  g.beginPath();
-  head();
-  g.clip();
-  part(g, tan, () => ell(g, 16.4, -27.6, 5.4, 3.8, 0.15), null);
-  g.restore();
-  part(g, coat, () => ell(g, 23.4, -23.2, 4.8, 2.8, 0.08));
-  part(g, '#1c1612', () => g.arc(27.8, -23.8, 1.25, 0, TAU), null);
-  eye(g, 19.8, -26.2);
-  part(g, tan, () => { // folded ear
-    g.moveTo(14.4, -28.4);
-    g.lineTo(18.8, -31.4);
-    g.lineTo(18.4, -26.4);
-    g.closePath();
-  });
-  collar(g, 12, -22.8, 15.4, -17.8);
 }
 
-// Our dog, of whichever breed we pick. t moves the tail.
-export function paintDog(g, breed, t = 0) {
-  const wag = Math.sin(t * 9) * 0.45;
-  if (breed === 'corgi') corgi(g, wag);
-  else if (breed === 'jackrussell') jackRussell(g, wag);
-  else worshond(g, wag);
+/*
+ * Our dog, of whichever breed we pick. t wags the tail; step (while walking) moves the
+ * legs and bobs him along; sniff puts his nose to the ground.
+ */
+export function paintDog(g, breed, t = 0, { step = null, sniff = false } = {}) {
+  const pose = {
+    wag: Math.sin(t * (step == null ? 9 : 12)) * 0.45,
+    legs: step == null ? [0, 0, 0, 0] : trot(step),
+    nod: sniff ? 0.42 + Math.sin(t * 11) * 0.05 : 0,
+  };
+  g.save();
+  if (step != null) g.translate(0, -Math.abs(Math.sin(step)) * 0.8);
+  if (breed === 'corgi') corgi(g, pose);
+  else if (breed === 'jackrussell') jackRussell(g, pose);
+  else worshond(g, pose);
+  g.restore();
 }
 
 /* ---------- the scene: sky by time of day ---------- */
@@ -1650,23 +1689,67 @@ export function createGarden(canvas, { onFrame } = {}) {
     });
   }
 
-  // Peter, and our dog: in front of the bush, looking towards it
-  function drawPets(t) {
+  /*
+   * Peter and the dog wander about in front of the bush. Each walks somewhere, stops for
+   * a bit (Peter looks around, the dog sniffs), then sets off again; now and then the dog
+   * runs over to see the rose. Every phone has its own walk; it isn't shared.
+   */
+  const walkers = {
+    penguin: { pos: 0.37, dir: 1, walking: false, wait: 1.5, target: 0.37, step: 0, speed: 13, range: [0.08, 0.92] },
+    dog: { pos: 0.68, dir: -1, walking: false, wait: 2.5, target: 0.68, step: 0, speed: 30, range: [0.06, 0.94] },
+  };
+
+  function wander(w, dt, u, isDog) {
+    if (w.walking) {
+      const move = (w.speed * w.pace * u * dt) / W;
+      const left = w.target - w.pos;
+      if (Math.abs(left) <= move) { // there: stop for a while
+        w.pos = w.target;
+        w.walking = false;
+        w.wait = isDog ? 1.5 + Math.random() * 3.5 : 2 + Math.random() * 4;
+        w.sniff = isDog && Math.random() < 0.6;
+        w.lookAt = !isDog && Math.random() < 0.6 ? Math.random() * w.wait : -1;
+      } else {
+        w.pos += Math.sign(left) * move;
+        w.dir = Math.sign(left);
+        w.step += dt * w.speed * w.pace * 0.5;
+      }
+      return;
+    }
+    w.wait -= dt;
+    if (w.lookAt >= 0 && w.wait < w.lookAt) { // Peter looks the other way
+      w.dir = -w.dir;
+      w.lookAt = -1;
+    }
+    if (w.wait > 0) return;
+    const toRose = isDog && Math.random() < 0.3;
+    let target;
+    do {
+      target = toRose ? 0.5 + Math.sign(w.pos - 0.5 || 1) * (0.07 + Math.random() * 0.04) : w.range[0] + Math.random() * (w.range[1] - w.range[0]);
+    } while (!toRose && Math.abs(target - w.pos) < 0.12);
+    Object.assign(w, { target, walking: true, sniff: false, pace: toRose ? 2.2 : 1 });
+  }
+
+  function drawPets(t, dt) {
     petHits = [];
     const u = unit() * 1.05;
     const tt = reduceMotion ? 0 : t;
     if (decor.has('pikkewyn')) {
-      const x = W * 0.37;
-      const sway = reduceMotion ? 0 : Math.sin(t * 1.3) * 0.045; // a little waddle
-      g.setTransform(dpr * u, 0, 0, dpr * u, x * dpr, (ground + 1) * dpr);
+      const w = walkers.penguin;
+      if (!reduceMotion) wander(w, dt, u, false);
+      const x = W * w.pos;
+      const sway = reduceMotion ? 0 : w.walking ? Math.sin(w.step) * 0.13 : Math.sin(t * 1.3) * 0.045; // the waddle
+      g.setTransform(dpr * u * w.dir, 0, 0, dpr * u, x * dpr, (ground + 1) * dpr);
       g.rotate(sway);
-      paintPenguin(g, tt);
+      paintPenguin(g, tt, w.walking ? w.step : null);
       petHits.push({ pet: 'penguin', x, top: ground - 46 * u, half: 14 * u });
     }
     if (decor.has('hond')) {
-      const x = W * 0.68, k = u * 1.2;
-      g.setTransform(-dpr * k, 0, 0, dpr * k, x * dpr, (ground + 2) * dpr); // mirrored: facing the rose
-      paintDog(g, dog.breed, tt);
+      const w = walkers.dog;
+      if (!reduceMotion) wander(w, dt, u, true);
+      const x = W * w.pos, k = u * 1.2;
+      g.setTransform(dpr * k * w.dir, 0, 0, dpr * k, x * dpr, (ground + 2) * dpr);
+      paintDog(g, dog.breed, tt, { step: w.walking ? w.step : null, sniff: !w.walking && w.sniff });
       petHits.push({ pet: 'dog', x, top: ground - 37 * k, half: 34 * k });
     }
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1758,7 +1841,7 @@ export function createGarden(canvas, { onFrame } = {}) {
     drawBackdrop(t, night);
     drawBush(age, t);
     drawGrass(t);
-    drawPets(t); // in front of the grass, or the dachshund disappears in it
+    drawPets(t, dt); // in front of the grass, or the dachshund disappears in it
     if (night > 0.02) { // dim the garden with the light
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.fillStyle = `rgba(14, 20, 40, ${0.38 * night})`;
